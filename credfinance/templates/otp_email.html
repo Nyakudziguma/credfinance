@@ -1,0 +1,9 @@
+{% autoescape off %}
+
+Hi {{user.first_name}}
+
+Your two-factor authentication OTP is {{otp}}. It will expire in 5 minutes.
+
+If you think it's not you, please ignore this email
+
+{% endautoescape %}
