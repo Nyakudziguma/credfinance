@@ -43,10 +43,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework_simplejwt',
     'rest_framework',
+    'channels',
     'accounts',
     'audit',
     'utils',
     'accounting',
+    'chat',
 
 ]
 
@@ -65,7 +67,7 @@ ROOT_URLCONF = 'credfinance.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -80,7 +82,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'credfinance.wsgi.application'
 
+ASGI_APPLICATION = 'credfinance.asgi.application'
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [("127.0.0.1", 6379)],  # Redis server details
+        },
+    },
+}
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -208,3 +219,7 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
+PUSHER_APP_ID = config('PUSHER_APP_ID')
+PUSHER_KEY = config('PUSHER_KEY')
+PUSHER_SECRET = config('PUSHER_SECRET')
+PUSHER_CLUSTER = config('PUSHER_CLUSTER')

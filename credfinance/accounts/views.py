@@ -68,13 +68,14 @@ class VerifyOTPView(APIView):
 
             if user.verify_otp(otp):
                 
-                CompanyAuditTrail.objects.create(
-                    user=user,
-                    action="Login ",
+                Utils.log_audit_trail(
+                    user=request.user,
+                    action="User Login",
                     model_name="Account",
                     model_id=user.id,
-                    timestamp=timezone.now(),
-                    ip_address=ip_address
+                    previous_value=None,
+                    new_value=None,
+                    ip_address=ip_address 
                 )
                 
                 return Response({"detail": "OTP verified successfully."}, status=status.HTTP_200_OK)
