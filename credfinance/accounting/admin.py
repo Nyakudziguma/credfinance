@@ -4,7 +4,7 @@ from .models import Income, ExpenseRequest, Quotation, Invoice, ProofOfPayment, 
 
 @admin.register(Income)
 class IncomeAdmin(admin.ModelAdmin):
-    list_display = ("id", "added_by", "amount", "source", "date_received", "description", "invoice_file")
+    list_display = ("id", "added_by", "amount", "source", "date_received", "description")
     list_filter = ("date_received", "source")
     search_fields = ("source", "description")
     readonly_fields = ("date_received",)
@@ -18,21 +18,21 @@ class ExpenseRequestAdmin(admin.ModelAdmin):
 
 @admin.register(Quotation)
 class QuotationAdmin(admin.ModelAdmin):
-    list_display = ("id", "added_by", "expense_request", "vendor_name", "amount", "quote_date", "selected", "quote_file")
+    list_display = ("id", "added_by", "expense_request", "vendor_name", "amount", "quote_date", "selected")
     list_filter = ("quote_date", "selected", "vendor_name")
     search_fields = ("vendor_name",)
     readonly_fields = ("quote_date",)
 
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
-    list_display = ("id", "added_by", "expense_request", "amount", "invoice_date", "vendor_name", "invoice_file")
+    list_display = ("id", "added_by", "expense_request", "amount", "invoice_date", "vendor_name")
     list_filter = ("invoice_date", "vendor_name")
     search_fields = ("vendor_name",)
     readonly_fields = ("invoice_date",)
 
 @admin.register(ProofOfPayment)
 class ProofOfPaymentAdmin(admin.ModelAdmin):
-    list_display = ("id", "added_by", "expense_request", "payment_date", "transaction_id", "payment_file")
+    list_display = ("id", "added_by", "expense_request", "payment_date", "transaction_id")
     list_filter = ("payment_date",)
     search_fields = ("transaction_id",)
     readonly_fields = ("payment_date",)

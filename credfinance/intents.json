@@ -1,0 +1,129 @@
+{
+    "intents": [
+        {
+            "tag": "greetings",
+            "patterns": [
+                "hello",
+                "hey",
+                "hi",
+                "good day",
+                "how are you",
+                "makadini",
+                "hesy",
+                "good morning",
+                "good afternoon",
+                "good evening",
+                "maswera sei",
+                "mamuka sei",
+                "makadii henyu"
+            ],
+            "responses": [
+                "Hello",
+                "How are you?",
+                "What can I do for you?"
+            ]
+        },
+        {
+            "tag": "loans",
+            "patterns": [
+                "maloans enyu akamira sei",
+                "Can i know more about your loans?",
+                "I need a loan",
+                "ndikuda loan",
+                "Assist panyaya dzema loans",
+                "do you give instant loans",
+                "do you offer civil servant loans",
+                "tell me more about your loans",
+                "mune maloans here",
+                "are you still offering loans?",
+                "do you have salary based loans",
+                "i'm looking for a loan",
+                "Do you hgive out usd loans?",
+                "Can i know about your loans"
+            ],
+            "responses": [
+                "Our loans are available to SSB civil servants and government pensioners, with an interest rate of 7.25%. Repayment terms are 24 months for civil servants and 12 months for government pensioners."
+            ]
+        },
+        {
+            "tag": "apply",
+            "patterns": [
+                "How do I apply?",
+                "I need a loan, how can I apply?",
+                "How to apply?"
+            ],
+            "responses": [
+                "To apply, type 'exit' to end this conversation, then select option 1 from the menu."
+            ]
+        },
+        {
+            "tag": "requirements",
+            "patterns": [
+                "what is needed to apply",
+                "What are the loan requirements?",
+                "marequirements enyu akamira sei?",
+                "ndinodawo maloan requirements",
+                "loan requirements"
+            ],
+            "responses": [
+                "KYC DOCUMENTS\r\n\r\nPhoto of yourself holding your national ID\r\nNational ID\r\nPayslip\r\nProof of residence \r\nA picture of signature on white paper using black pen or blue pen.\r\n\r\nBanking Details\r\nBank Name\r\nbranch\r\naccount number \r\naccount name \r\n\r\nNEXT OK KIN DETAILS \r\nnext of kin name\r\nnext of kin relationship\r\nnext of kin phone number\r\nNext of kin ID number\r\nNext if kin date of birth\r\nNext of Kin Employer\r\nNext of Kin Employer phone number\r\nNext kin address\r\n\r\nNumber of dependants\r\nDo you rent or own the property?\r\nMarital status\r\nEmail address\r\nCurrent House number and years stayed at the address.\r\nEmployer name and phone number\r\nName of contact person at work\r\nProfession\r\nDate joined and year of retirement \r\nGross and net salary \r\nYears at current employer\r\nEmployer name and address"
+            ]
+        },
+        {
+            "tag": "zig loans",
+            "patterns": [
+                "Are you offering zig loans?",
+                "Do you have zig loans",
+                "I'm looking for zig loans",
+                "Can I get zig loans?",
+                "looking for zig loans"
+            ],
+            "responses": [
+                "We currently do not offer ZIG loans.",
+                "We are only offering loans in USD!"
+            ]
+        },
+        {
+            "tag": "private sector",
+            "patterns": [
+                "Are you offering loans to private sector?",
+                "Do you offer loans to private sector?",
+                "Do you deal with private sector employees?",
+                "Anything about private sector loans?",
+                "I'm in the private sector",
+                "is it for private sector?",
+                "Munopa kuprivate sector here?",
+                "i work in the private sector"
+            ],
+            "responses": [
+                "Currently, we do not offer loans to employees in the private sector."
+            ]
+        },
+        {
+            "tag": "zna loans",
+            "patterns": [
+                "Do you give loans to ZNA",
+                "zna munopa here",
+                "Do you give loans to airforce members",
+                "Do you offer loans to ZDF members",
+                "airforce munopa here"
+            ],
+            "responses": [
+                "We're not yet offering loans to ZNA members!",
+                "Loans are not currently available to ZNA members"
+            ]
+        },
+        {
+            "tag": "location",
+            "patterns": [
+                "Where are you located?",
+                "Can i have your address",
+                "munowanikwa kupi",
+                "Ndokuwanai papii"
+            ],
+            "responses": [
+                "We are located at 25 George Sulundika, between First and Second Streets, in Regal Star House, office 804."
+            ]
+        }
+    ]
+}

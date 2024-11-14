@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     'utils',
     'accounting',
     'chat',
+    'tickets',
+    'calender',
+    'bot',
 
 ]
 
