@@ -21,6 +21,14 @@ class ChatRoom(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    latest_message = models.ForeignKey(
+        'Message',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='latest_message_chatrooms'
+    )
+
 
     def __str__(self):
         return f" Client: {self.client.name}"

@@ -4,4 +4,6 @@ from chat.consumers import *
 
 websocket_urlpatterns = [
      re_path(r'wss/chat/(?P<chatroom_id>\d+)/$', ChatConsumer.as_asgi()),
+     re_path(r'wss/chatroom-list/$', ChatroomListConsumer.as_asgi()),
+
 ]

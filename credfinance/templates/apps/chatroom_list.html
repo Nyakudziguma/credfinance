@@ -1,0 +1,14 @@
+<span class="mail-desc">
+    {% if chatroom.latest_message %}
+        {{ chatroom.latest_message.content }}
+    {% else %}
+        No messages yet
+    {% endif %}
+</span>
+<span class="time">
+    {% if chatroom.latest_message %}
+        {{ chatroom.latest_message.timestamp }}
+    {% else %}
+        {{ chatroom.created_at }}
+    {% endif %}
+</span>

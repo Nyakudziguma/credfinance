@@ -7,6 +7,9 @@ from django.views.decorators.csrf import csrf_exempt
 from accounts.models import Account
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.template.loader import render_to_string
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 def handle_client_message(phone_number, message_content):
@@ -38,43 +41,78 @@ def handle_client_message(phone_number, message_content):
     return {"success": True, "chatroom_id": chatroom.id, "message_id": message.id}
 
 
-
 @login_required
 def send_message(request, chatroom_id):
     if request.method == 'POST':
-        
-        chatroom = ChatRoom.objects.get(id=chatroom_id)
-        
-        # Get the content of the message and ensure it's not empty
-        content = request.POST.get('content', '').strip()
-        if not content:
-            return redirect('chatroom', chatroom_id=chatroom_id)  # Optionally, add a message about empty content
-        
-        # Get the sender as the logged-in user’s Account
-        sender = Account.objects.get(id=request.user.id)
+        try:
+            chatroom = ChatRoom.objects.get(id=chatroom_id)
+            
+            # Get the content of the message and ensure it's not empty
+            content = request.POST.get('content', '').strip()
+            if not content:
+                return redirect('chatroom', chatroom_id=chatroom_id)
+            
+            # Get the sender as the logged-in user's Account
+            sender = Account.objects.get(id=request.user.id)
 
-        # Create the message with correct sender reference
-        message = Message.objects.create(
-            chatroom=chatroom,
-            content=content,
-            sender_type='agent',  # You can make this dynamic if needed
-            sender_id=sender.id
-        )
+            # Create the message with correct sender reference
+            message = Message.objects.create(
+                chatroom=chatroom,
+                content=content,
+                sender_type='agent',
+                sender_id=sender.id
+            )
 
-        # Convert the timestamp to the local time zone
-        local_time = timezone.localtime(message.timestamp)
-        formatted_timestamp = local_time.strftime('%Y-%m-%d %H:%M:%S')
+            # Update chatroom's latest message and updated_at timestamp
+            chatroom.latest_message = message
+            chatroom.save()
 
-        # Return only the new message's HTML as a fragment to be appended in the chat
-        return render(request, 'apps/chat_message.html', {
-            'message': message,
-            'sender_name': sender.first_name,
-            'timestamp': formatted_timestamp,
-        })
+            # Convert the timestamp to the local time zone
+            local_time = timezone.localtime(message.timestamp)
+            formatted_timestamp = local_time.strftime('%Y-%m-%d %H:%M:%S')
+
+            # Prepare the message context
+            message_context = {
+                'message': message,
+                'sender_name': sender.first_name,
+                'timestamp': formatted_timestamp,
+            }
+
+            # Get the channel layer
+            channel_layer = get_channel_layer()
+            
+            # Send to chat room group
+            async_to_sync(channel_layer.group_send)(
+                f"chat_{chatroom_id}",
+                {
+                    "type": "chat_message",
+                    "message": {
+                        'sender_name': sender.first_name,
+                        'sender_type': 'agent',
+                        'content': content,
+                        'timestamp': formatted_timestamp,
+                    }
+                }
+            )
+
+            # Update chatroom list for all users
+            chatrooms = ChatRoom.objects.all().order_by('-updated_at')  # Changed from latest_message__timestamp
+            async_to_sync(channel_layer.group_send)(
+                "chatroom_list",
+                {
+                    "type": "chatroom_list_update",
+                    "html": render_to_string("apps/chatroom_list.html", {"chatrooms": chatrooms})
+                }
+            )
+
+            # Return only the new message's HTML as a fragment
+            return render(request, 'apps/chat_message.html', message_context)
+            
+        except (ChatRoom.DoesNotExist, Account.DoesNotExist) as e:
+            print(f"Error in send_message: {e}")
+            return redirect('chatroom', chatroom_id=chatroom_id)
         
     return redirect('chatroom', chatroom_id=chatroom_id)
-
-
 
 def chats(request, chatroom_id=None):
     # Fetch all chatrooms for the logged-in user
@@ -97,3 +135,11 @@ def chats(request, chatroom_id=None):
     # Return chatrooms and the selected chatroom's messages to the template
     return render(request, 'apps/chat.html', {'chatrooms': chatrooms, 'chatroom': chatroom, 'messages': messages})
 
+def chatroom_list_update(self, event):
+    # Broadcast the updated list to all connected clients
+    chatrooms = self.get_chatrooms()
+    html_content = self.render_chatroom_list(chatrooms)  # Render the updated list
+    self.send(text_data=json.dumps({
+        'type': 'chatroom_list_update',
+        'html': html_content
+    }))

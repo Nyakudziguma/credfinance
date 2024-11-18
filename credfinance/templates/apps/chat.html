@@ -25,8 +25,7 @@
                         </span>
                         <div class="mail-contnet">
                             <h5 class="message-title">{{ chatroom.client.name }}</h5> 
-                            <span class="mail-desc">{{ chatroom.latest_message.content }}</span> 
-                            <span class="time">{{ chatroom.latest_message.timestamp }}</span> 
+                            {% include 'apps/chatroom_list.html' %}
                         </div>
                     </a>
                     {% endfor %}
@@ -58,22 +57,31 @@
             <div class="card-body border-top">
                 <div class="row">
                     <div class="col-9">
-                        <!-- Form for sending a new message using HTMX -->
                         <form 
-                            hx-ext="ws" 
-                            ws-connect="/wss/chat/{{ chatroom.id }}/" 
-                            ws-send="{'content': value}" 
-                            onsubmit="return false;" 
+                            id="messageForm"
+                            hx-post="{% url 'send_message' chatroom.id %}"
+                            hx-target="#message-list"
+                            hx-swap="beforeend"
                         >
                             {% csrf_token %}
                             <div class="input-field m-t-0 m-b-0">
-                                <input id="replyTextarea" name="content" placeholder="Type and enter" class="form-control border-0" type="text" required>
+                                <input 
+                                    id="messageInput" 
+                                    name="content" 
+                                    placeholder="Type and enter" 
+                                    class="form-control border-0" 
+                                    type="text" 
+                                    required
+                                >
                             </div>
                         </form>
-
                     </div>
                     <div class="col-3">
-                        <button class="btn-circle btn-lg btn-cyan float-right text-white" type="submit">
+                        <button 
+                            type="button" 
+                            class="btn-circle btn-lg btn-cyan float-right text-white"
+                            onclick="submitMessage()"
+                        >
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
@@ -84,32 +92,80 @@
 </div>
 
 {% block scripts %}
+
 <script>
-  // Function to scroll chat-box to the bottom
   function scrollToBottom() {
     const chatBox = document.getElementById('chat-box');
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // Call scrollToBottom when HTMX request is complete (new message sent or page load)
   document.body.addEventListener('htmx:afterRequest', function(event) {
-    if (event.target.id === 'chat-box') {
-      scrollToBottom();
+    scrollToBottom();
+    const input = document.getElementById('messageInput');
+    if (input) {
+      input.value = '';
     }
   });
 
-  // Ensure chat scrolls to the bottom on page load
-//   window.addEventListener('load', scrollToBottom);
+  window.addEventListener('load', scrollToBottom);
 
-//   document.body.addEventListener('htmx:ws-open', function(event) {
-//     console.log('WebSocket connected:', event);
-// });
+  function submitMessage() {
+    const form = document.getElementById('messageForm');
+    const input = document.getElementById('messageInput');
+    
+    if (input.value.trim()) {
+      htmx.trigger(form, 'submit');
+    }
+  }
 
-// document.body.addEventListener('htmx:ws-message', function(event) {
-//     console.log('WebSocket message received:', event.detail);
-// });
+  // Add enter key support
+  document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitMessage();
+    }
+  });
 
+  // WebSocket connection for chat messages
+  const chatSocket = new WebSocket(
+    'ws://' + window.location.host + '/wss/chat/{{ chatroom.id }}/'
+  );
+
+  chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    const messageList = document.getElementById('message-list');
+    if (messageList && data.html) {
+      messageList.insertAdjacentHTML('beforeend', data.html);
+      scrollToBottom();
+    }
+  };
+
+  chatSocket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+  };
+
+  // WebSocket connection for chatroom list updates
+  const chatroomListSocket = new WebSocket(
+    'ws://' + window.location.host + '/wss/chatroom_list/'
+  );
+
+  chatroomListSocket.onmessage = function(e) {
+  const data = JSON.parse(e.data);
+  if (data.type === 'chatroom_list_update') {
+    // Update the entire chatroom list by replacing the content
+    const chatroomListContainer = document.querySelector('.mailbox .message-center');
+    if (chatroomListContainer) {
+      chatroomListContainer.innerHTML = data.html; // Replace the entire list with updated HTML
+    }
+  }
+};
+
+
+  chatroomListSocket.onclose = function(e) {
+    console.error('Chatroom list socket closed unexpectedly');
+  };
 </script>
-{% endblock %}
 
+
+{% endblock %}
 {% endblock %}

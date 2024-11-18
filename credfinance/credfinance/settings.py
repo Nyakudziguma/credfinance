@@ -29,7 +29,8 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = [
     'finance.credspace.co.zw',
     'www.finance.credspace.co.zw',
-    '127.0.0.1'
+    '127.0.0.1',
+    'localhost'
 ]
 
 
@@ -228,3 +229,27 @@ PUSHER_APP_ID = config('PUSHER_APP_ID')
 PUSHER_KEY = config('PUSHER_KEY')
 PUSHER_SECRET = config('PUSHER_SECRET')
 PUSHER_CLUSTER = config('PUSHER_CLUSTER')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'daphne': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',  # Add your server's origin here
+]
