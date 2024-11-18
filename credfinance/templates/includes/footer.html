@@ -178,10 +178,16 @@
 <script src="{% static 'assets/libs/moment/min/moment.min.js' %}"></script>
 <script src="{% static 'assets/libs/fullcalendar/dist/fullcalendar.min.js' %}"></script>
 <script src="{% static 'dist/js/pages/calendar/cal-init.js' %}"></script>
-
 <script src="../../assets/extra-libs/taskboard/js/lobilist.js"></script>
     <script src="../../assets/extra-libs/taskboard/js/lobibox.min.js"></script>
     <script src="../../assets/extra-libs/taskboard/js/task-init.js"></script>
+    
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.7.0"></script>
+    <script src="https://unpkg.com/hyperscript.org@0.9.13"></script>
+
+   
+    {% block javascript %} {% endblock %}
 </body>
 
 </html>

@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 class MyAccountManager(BaseUserManager):
-    def create_user(self, first_name,user_type, last_name, username, email, password=None, phone_number=None):
+    def create_user(self, first_name, last_name, username, email, password=None):
         if not email:
             raise ValueError('User must have an email address')
 
@@ -19,16 +19,13 @@ class MyAccountManager(BaseUserManager):
             username=username,
             first_name=first_name,
             last_name=last_name,
-            phone_number=phone_number,
             force_password_change =True,
-            user_type = user_type,
         )
 
-        if user_type != 'general_user':
-            user.is_admin = True
-            user.is_active = True
-            user.is_staff = True
-            user.is_superadmin = True
+        user.is_admin = True
+        user.is_active = True
+        user.is_staff = True
+        user.is_superadmin = True
         user.save(using=self._db)
         
 
@@ -40,14 +37,13 @@ class MyAccountManager(BaseUserManager):
         user.save()
         return user
 
-    def create_superuser(self, first_name, last_name, email, username, password, phone_number):
+    def create_superuser(self, first_name, last_name, email, username, password):
         user = self.create_user(
             email=self.normalize_email(email),
             username=username,
             password=password,
             first_name=first_name,
             last_name=last_name,
-            phone_number=phone_number,
         )
         user.is_admin = True
         user.is_active = True
@@ -75,6 +71,11 @@ class Account(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_superadmin = models.BooleanField(default=False)
+    groups = models.ManyToManyField(
+    'auth.Group',
+    related_name='account_groups',
+    blank=True,
+)
     user_type = models.CharField(max_length=255, default='general_user', choices=(('general_user', 'general_user'), ('administrator', 'administrator'), ('finance_manager', 'finance_manager')))
       
 

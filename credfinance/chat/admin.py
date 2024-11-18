@@ -3,18 +3,18 @@ from .models import Client, ChatRoom, Message
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('client_id', 'name', 'contact_info')
-    search_fields = ('client_id', 'name')
+    list_display = [i.name for i in Client._meta.fields]
+    search_fields = ('id', 'name', 'phone_number')
 
 @admin.register(ChatRoom)
 class ChatRoomAdmin(admin.ModelAdmin):
-    list_display = ('id', 'agent', 'client', 'created_at', 'updated_at')
+    list_display = [i.name for i in ChatRoom._meta.fields]
     search_fields = ('agent__username', 'client__name')
     list_filter = ('created_at', 'updated_at')
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'chatroom', 'sender_type', 'content', 'timestamp', 'is_read')
+    list_display = [i.name for i in Message._meta.fields]
     list_filter = ('timestamp', 'is_read', 'sender_type')
     search_fields = ('content',)
     ordering = ('-timestamp',)

@@ -2,22 +2,33 @@ from django.db import models
 from accounts.models import Account
 
 class Client(models.Model):
-    client_id = models.CharField(max_length=100, unique=True)  
     name = models.CharField(max_length=255)
-    contact_info = models.CharField(max_length=255, blank=True, null=True)  
+    phone_number = models.CharField(max_length=255, unique=True) 
+    email = models.EmailField(blank=True, null =True) 
     def __str__(self):
         return self.name
 
 
 class ChatRoom(models.Model):
-    agent = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='agent_chatrooms')
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('closed', 'Closed'),
+    ]
+
+    agent = models.ForeignKey(Account, on_delete=models.SET_NULL, related_name='agent_chatrooms', null=True, blank=True )
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='client_chatrooms')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
 
     def __str__(self):
-        return f"ChatRoom {self.id} - Agent: {self.agent.username}, Client: {self.client.name}"
+        return f" Client: {self.client.name}"
 
+    @classmethod
+    def get_or_create_room(cls, agent, client):
+        room, created = cls.objects.get_or_create(agent=agent, client=client)
+        return room
 
 class Message(models.Model):
     chatroom = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE)
@@ -26,6 +37,7 @@ class Message(models.Model):
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+
 
     def __str__(self):
         return f"Message {self.id} in ChatRoom {self.chatroom.id}"

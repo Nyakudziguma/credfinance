@@ -29,12 +29,14 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = [
     'finance.credspace.co.zw',
     'www.finance.credspace.co.zw',
+    '127.0.0.1'
 ]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,7 +45,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework_simplejwt',
     'rest_framework',
-    'channels',
     'accounts',
     'audit',
     'utils',
@@ -82,6 +83,7 @@ TEMPLATES = [
         },
     },
 ]
+CHANNELS_WS_PROTOCOLS = ["ws", "wss"]
 
 WSGI_APPLICATION = 'credfinance.wsgi.application'
 
