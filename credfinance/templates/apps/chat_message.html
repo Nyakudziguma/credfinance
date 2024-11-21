@@ -7,13 +7,17 @@
                 <img src="{% static 'assets/images/users/default_agent.jpg' %}" alt="agent">
             </div> -->
         {% else %}
-            <h6 class="font-medium">{{ message.sender.name }}</h6>
+            <!-- <h6 class="font-medium">{{ message.sender.name }}</h6> -->
             <div class="chat-img">
                 <img src="{% static 'assets/images/users/user (1).png' %}" alt="client">
             </div>
         {% endif %}
         <div class="chat-content">
-            <h6 class="font-medium">{{ message.sender.first_name }}</h6> <!-- Adjusted to fetch first_name -->
+            {% if message.sender_type == 'agent' %}
+            <h6 class="font-medium">{{ message.sender.first_name }}</h6> 
+            {% else %}
+            <h6 class="font-medium">{{ message.sender.name }}</h6> 
+            {% endif %}
             <div class="box {% if message.sender_type == 'agent' %} bg-light-inverse {% else %} bg-light-info {% endif %}">
                 {{ message.content }}
             </div>
@@ -21,3 +25,6 @@
         <div class="chat-time">{{ message.timestamp }}</div>
     </li>
 </div>
+
+
+    

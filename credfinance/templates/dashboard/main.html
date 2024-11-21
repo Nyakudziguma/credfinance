@@ -42,10 +42,10 @@
                                     <div class="d-flex no-block align-items-center">
                                         <div>
                                             <i class="mdi mdi-emoticon font-20 text-muted"></i>
-                                            <p class="font-16 m-b-5">New Clients</p>
+                                            <p class="font-16 m-b-5">Total Conversations</p>
                                         </div>
                                         <div class="ml-auto">
-                                            <h1 class="font-light text-right">23</h1>
+                                            <h1 class="font-light text-right" id="chatroom-count">0</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -66,10 +66,10 @@
                                     <div class="d-flex no-block align-items-center">
                                         <div>
                                             <i class="mdi mdi-image font-20  text-muted"></i>
-                                            <p class="font-16 m-b-5">New Projects</p>
+                                            <p class="font-16 m-b-5">Total Messages</p>
                                         </div>
                                         <div class="ml-auto">
-                                            <h1 class="font-light text-right">169</h1>
+                                            <h1 class="font-light text-right" id="total-messages-count">0</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -90,10 +90,10 @@
                                     <div class="d-flex no-block align-items-center">
                                         <div>
                                             <i class="mdi mdi-currency-eur font-20 text-muted"></i>
-                                            <p class="font-16 m-b-5">New Invoices</p>
+                                            <p class="font-16 m-b-5">Unread Messages</p>
                                         </div>
                                         <div class="ml-auto">
-                                            <h1 class="font-light text-right">157</h1>
+                                            <h1 class="font-light text-right" id="unread-messages-count">0</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -114,10 +114,10 @@
                                     <div class="d-flex no-block align-items-center">
                                         <div>
                                             <i class="mdi mdi-poll font-20 text-muted"></i>
-                                            <p class="font-16 m-b-5">New Sales</p>
+                                            <p class="font-16 m-b-5">Read Messages</p>
                                         </div>
                                         <div class="ml-auto">
-                                            <h1 class="font-light text-right">236</h1>
+                                            <h1 class="font-light text-right" id="read-messages-count">0</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -582,4 +582,52 @@
                 <!-- Recent comment and chats -->
                 <!-- ============================================================== -->
             </div>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const chatroomCountElement = document.getElementById('chatroom-count');
+    const totalMessagesCountElement = document.getElementById('total-messages-count');
+    const unreadMessagesCountElement = document.getElementById('unread-messages-count')
+    const readMessagesCountElement = document.getElementById('read-messages-count')
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const chatroomSocket = new WebSocket(`${protocol}//${window.location.host}/wss/dashboard_stats/`);
+
+    chatroomSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data.type === 'chatroom_count') {
+        const chatroomCountElement = document.getElementById('chatroom-count');
+        const totalMessagesCountElement = document.getElementById('total-messages-count');
+        const unreadMessagesCountElement = document.getElementById('unread-messages-count')
+        const readMessagesCountElement = document.getElementById('read-messages-count')
+        if (chatroomCountElement) {
+            chatroomCountElement.innerText = data.total_chatrooms;
+        }
+        if(totalMessagesCountElement) {
+            totalMessagesCountElement.innerText = data.total_messages;
+        }
+        if(unreadMessagesCountElement) {
+            unreadMessagesCountElement.innerText = data.unread_messages;
+        }
+       if (readMessagesCountElement) {
+            readMessagesCountElement.innerText = data.read_messages;
+        }
+    }
+};
+
+    chatroomSocket.onerror = function (error) {
+        console.error('WebSocket error:', error);
+    };
+
+    chatroomSocket.onclose = function (e) {
+        console.error('Chatroom WebSocket closed unexpectedly:', e);
+    };
+});
+
+</script>
             {% endblock %}
+
+
+
+{% endblock %}

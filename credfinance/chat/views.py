@@ -1,6 +1,6 @@
 import json
 from .models import Client, ChatRoom, Message
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404,redirect
 from django.db.models import Max
 from django.views.decorators.csrf import csrf_exempt
@@ -15,47 +15,112 @@ from asgiref.sync import async_to_sync
 def handle_client_message(phone_number, message_content):
     """
     Handles incoming messages from clients via WhatsApp.
-    If the client doesn't exist, creates a new one with the phone number as the name.
     """
     try:
-        # Try to get the client based on the phone number
-        client = Client.objects.get(phone_number=phone_number)
-    except Client.DoesNotExist:
-        # If the client does not exist, create a new client with the phone number as the name
-        client = Client.objects.create(
-            phone_number=phone_number,
-            name=phone_number  # Set phone number as the client's name
+        try:
+            client = Client.objects.get(phone_number=phone_number)
+        except Client.DoesNotExist:
+            client = Client.objects.create(
+                phone_number=phone_number,
+                name=phone_number  
+            )
+    
+        chatroom, created = ChatRoom.objects.get_or_create(client=client, status='open')
+        
+        content = message_content
+
+        message = Message.objects.create(
+            chatroom=chatroom,
+            content=content,
+            sender_type='client',
+            sender_id=client.id
         )
-    
-    # Ensure the chatroom is created or fetched for the client with status 'open'
-    chatroom, created = ChatRoom.objects.get_or_create(client=client, status='open')
 
-    # Save the message to the database
-    message = Message.objects.create(
-        chatroom=chatroom,
-        sender_type='client',
-        sender_id=client.id,
-        content=message_content,
-    )
-    
-    return {"success": True, "chatroom_id": chatroom.id, "message_id": message.id}
+        chatroom.latest_message = message
+        chatroom.save()
 
+        local_time = timezone.localtime(message.timestamp)
+        formatted_timestamp = local_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        message_context = {
+            'message': {
+                'sender': client,
+                'content': content,
+                'sender_type': 'client',
+                'timestamp': formatted_timestamp
+            }
+        }
+
+        html_message = render_to_string('apps/chat_message.html', message_context)
+
+        channel_layer = get_channel_layer()
+        
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{chatroom.id}",
+            {
+                "type": "chat_message",
+                "html": html_message,
+                "message": {
+                    'sender_name': client.name,
+                    'sender_type': 'client',
+                    'content': content,
+                    'timestamp': formatted_timestamp,
+                }
+            }
+        )
+
+        async_to_sync(channel_layer.group_send)(
+            "chat_updates",
+            {
+                "type": "chat_update",
+                "chatroom_id": chatroom.id,
+                "message_content": content,
+                "timestamp": formatted_timestamp,
+                "sender_name": client.name
+            }
+        )
+        
+        total_chatrooms = ChatRoom.objects.count()
+        total_messages = Message.objects.count()
+        unread_messages = Message.objects.filter(is_read=False).count()
+        read_messages = Message.objects.filter(is_read=True).count()
+        async_to_sync(channel_layer.group_send)(
+            "dashboard_stats",
+            {
+                "type": "chatroom_count_update",
+                "total_chatrooms": total_chatrooms,
+                "total_messages": total_messages,
+                'unread_messages': unread_messages,
+                'read_messages': read_messages,
+            }
+        )
+       
+
+        return {
+            "success": True,
+            "chatroom_id": chatroom.id,
+            "message_id": message.id,
+            "html": html_message
+        }
+        
+    except Exception as e:
+        print(f"Error in send_message: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @login_required
 def send_message(request, chatroom_id):
     if request.method == 'POST':
         try:
             chatroom = ChatRoom.objects.get(id=chatroom_id)
-            
-            # Get the content of the message and ensure it's not empty
             content = request.POST.get('content', '').strip()
-            if not content:
-                return redirect('chatroom', chatroom_id=chatroom_id)
             
-            # Get the sender as the logged-in user's Account
+            if not content:
+                return HttpResponse('')
+            
             sender = Account.objects.get(id=request.user.id)
-
-            # Create the message with correct sender reference
             message = Message.objects.create(
                 chatroom=chatroom,
                 content=content,
@@ -63,25 +128,16 @@ def send_message(request, chatroom_id):
                 sender_id=sender.id
             )
 
-            # Update chatroom's latest message and updated_at timestamp
             chatroom.latest_message = message
             chatroom.save()
 
-            # Convert the timestamp to the local time zone
-            local_time = timezone.localtime(message.timestamp)
-            formatted_timestamp = local_time.strftime('%Y-%m-%d %H:%M:%S')
-
-            # Prepare the message context
             message_context = {
                 'message': message,
                 'sender_name': sender.first_name,
-                'timestamp': formatted_timestamp,
+                'timestamp': timezone.localtime(message.timestamp).strftime('%Y-%m-%d %H:%M:%S'),
             }
 
-            # Get the channel layer
             channel_layer = get_channel_layer()
-            
-            # Send to chat room group
             async_to_sync(channel_layer.group_send)(
                 f"chat_{chatroom_id}",
                 {
@@ -90,38 +146,47 @@ def send_message(request, chatroom_id):
                         'sender_name': sender.first_name,
                         'sender_type': 'agent',
                         'content': content,
-                        'timestamp': formatted_timestamp,
+                        'timestamp': message_context['timestamp'],
                     }
                 }
             )
-
-            # Update chatroom list for all users
-            chatrooms = ChatRoom.objects.all().order_by('-updated_at')  # Changed from latest_message__timestamp
             async_to_sync(channel_layer.group_send)(
-                "chatroom_list",
+                "chat_updates",
                 {
-                    "type": "chatroom_list_update",
-                    "html": render_to_string("apps/chatroom_list.html", {"chatrooms": chatrooms})
+                    "type": "chat_update",
+                    "chatroom_id": chatroom.id,
+                    "message_content": content,
+                    "timestamp": message_context['timestamp'],
+                    "sender_name": sender.first_name,
+                }
+            )
+            total_chatrooms = ChatRoom.objects.count()
+            total_messages = Message.objects.count()
+            unread_messages = Message.objects.filter(is_read=False).count()
+            read_messages = Message.objects.filter(is_read=True).count()
+            async_to_sync(channel_layer.group_send)(
+                "dashboard_stats",
+                {
+                    "type": "chatroom_count_update",
+                    "total_chatrooms": total_chatrooms,
+                    "total_messages": total_messages,
+                    'unread_messages': unread_messages,
+                    'read_messages': read_messages,
                 }
             )
 
-            # Return only the new message's HTML as a fragment
-            return render(request, 'apps/chat_message.html', message_context)
+            print(f'{chatroom.client.phone_number}, {content}')
+
+            return HttpResponse('')  # Return empty response for HTMX
             
-        except (ChatRoom.DoesNotExist, Account.DoesNotExist) as e:
-            print(f"Error in send_message: {e}")
-            return redirect('chatroom', chatroom_id=chatroom_id)
-        
-    return redirect('chatroom', chatroom_id=chatroom_id)
+        except Exception as e:
+            return HttpResponse(status=500)
+            
+    return HttpResponse(status=400)
 
 def chats(request, chatroom_id=None):
-    # Fetch all chatrooms for the logged-in user
-    chatrooms = ChatRoom.objects.all()
-    
-    # If a specific chatroom_id is provided, fetch the corresponding chatroom and its messages
-    chatrooms = chatrooms.annotate(latest_message_timestamp=Max('messages__timestamp'))
+    chatrooms = ChatRoom.objects.all().annotate(latest_message_timestamp=Max('messages__timestamp'))
 
-    # Fetch the latest message for each chatroom
     for chatroom in chatrooms:
         chatroom.latest_message = Message.objects.filter(chatroom=chatroom).order_by('-timestamp').first()
 
@@ -132,14 +197,46 @@ def chats(request, chatroom_id=None):
         chatroom = None
         messages = []
 
-    # Return chatrooms and the selected chatroom's messages to the template
-    return render(request, 'apps/chat.html', {'chatrooms': chatrooms, 'chatroom': chatroom, 'messages': messages})
+    return render(request, 'apps/chat.html', {
+        'chatrooms': chatrooms,
+        'chatroom': chatroom,
+        'messages': messages
+    })
 
-def chatroom_list_update(self, event):
-    # Broadcast the updated list to all connected clients
-    chatrooms = self.get_chatrooms()
-    html_content = self.render_chatroom_list(chatrooms)  # Render the updated list
-    self.send(text_data=json.dumps({
-        'type': 'chatroom_list_update',
-        'html': html_content
-    }))
+
+
+def create_message(request, chatroom_id):
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        chatroom = get_object_or_404(ChatRoom, id=chatroom_id)
+        message = Message.objects.create(
+            chatroom=chatroom,
+            content=content,
+            sender=request.user
+        )
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "chat_updates",
+            {
+                "type": "chat_update",
+                "chatroom_id": chatroom.id,
+                "message_content": content,
+                "timestamp": message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                "sender_name": request.user.get_full_name() or request.user.username
+            }
+        )
+
+        async_to_sync(channel_layer.group_send)(
+            f"message_{chatroom.id}",
+            {
+                "type": "message_update",
+                'sender_name': request.user.get_full_name() or request.user.username,
+                'sender_type': 'agent',
+                'content': content,
+                'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+        )
+
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'}, status=400)

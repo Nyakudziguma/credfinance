@@ -12,3 +12,81 @@
         {{ chatroom.created_at }}
     {% endif %}
 </span>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const chatSocket = new WebSocket(
+            `${protocol}//${window.location.host}/wss/list/`
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            
+            if (data.type === 'chat_update') {
+                updateChatroomList(data.chatrooms);
+            }
+        };
+
+        function updateChatroomList(chatrooms) {
+            const messageCenter = document.querySelector('.message-center.chat-scroll');
+            if (!messageCenter) return;
+
+            // Clear existing content
+            messageCenter.innerHTML = '';
+
+            // Add updated chatrooms
+            chatrooms.forEach(chatroom => {
+                const chatroomHtml = `
+                    <a href="/chat/chats/${chatroom.id}/" class="message-item" data-chatroom-id="${chatroom.id}">
+                        <span class="user-img">
+                            <img src="/static/assets/images/users/user (1).png" alt="agent" class="rounded-circle">
+                            <span class="profile-status online pull-right"></span>
+                        </span>
+                        <div class="mail-contnet">
+                            <h5 class="message-title">${chatroom.client_name}</h5>
+                            <span class="mail-desc">
+                                ${chatroom.latest_message}
+                            </span>
+                            <span class="time">
+                                ${chatroom.timestamp}
+                            </span>
+                        </div>
+                    </a>
+                `;
+                messageCenter.innerHTML += chatroomHtml;
+            });
+        }
+
+        chatSocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+
+        chatSocket.onclose = function(e) {
+            console.log('Chat socket closed:', e);
+            
+            if (reconnectAttempts < maxReconnectAttempts) {
+                console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+                reconnectAttempts++;
+                setTimeout(connectWebSocket, 3000);
+            } else {
+                console.log('Max reconnection attempts reached');
+            }
+        };
+
+        chatSocket.onopen = function() {
+            console.log('WebSocket connected');
+            reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+        };
+
+        return chatSocket;
+    }
+
+    // Initial connection
+    let chatSocket = connectWebSocket();
+});
+    </script>

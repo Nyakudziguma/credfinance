@@ -59,7 +59,8 @@
                     <div class="col-9">
                         <form 
                             id="messageForm"
-                            hx-post="{% url 'send_message' chatroom.id %}"
+                            hx-post="{% if chatroom %}{% url 'send_message' chatroom.id %}{% else %}#{% endif %}"
+
                             hx-target="#message-list"
                             hx-swap="beforeend"
                         >
@@ -92,80 +93,103 @@
 </div>
 
 {% block scripts %}
-
 <script>
-  function scrollToBottom() {
-    const chatBox = document.getElementById('chat-box');
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
+    document.addEventListener('DOMContentLoaded', function() {
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
 
-  document.body.addEventListener('htmx:afterRequest', function(event) {
-    scrollToBottom();
-    const input = document.getElementById('messageInput');
-    if (input) {
-      input.value = '';
-    }
-  });
+        // Scroll functions
+        function scrollToBottom() {
+            const chatBox = document.getElementById('chat-box');
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
 
-  window.addEventListener('load', scrollToBottom);
+        // HTMX after request handler
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            scrollToBottom();
+            
+            const input = document.getElementById('messageInput');
+            if (input) {
+                input.value = '';
+            }
+        });
 
-  function submitMessage() {
-    const form = document.getElementById('messageForm');
-    const input = document.getElementById('messageInput');
-    
-    if (input.value.trim()) {
-      htmx.trigger(form, 'submit');
-    }
-  }
+        // Submit message function
+        function submitMessage() {
+            const form = document.getElementById('messageForm');
+            const input = document.getElementById('messageInput');
+            
+            if (input && input.value.trim()) {
+                htmx.trigger(form, 'submit');
+            }
+        }
 
-  // Add enter key support
-  document.getElementById('messageInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      submitMessage();
-    }
-  });
+        // Enter key handler
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitMessage();
+            }
+        });
 
-  // WebSocket connection for chat messages
-  const chatSocket = new WebSocket(
-    'ws://' + window.location.host + '/wss/chat/{{ chatroom.id }}/'
-  );
+        // Make submitMessage available globally
+        window.submitMessage = submitMessage;
 
-  chatSocket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    const messageList = document.getElementById('message-list');
-    if (messageList && data.html) {
-      messageList.insertAdjacentHTML('beforeend', data.html);
-      scrollToBottom();
-    }
-  };
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const chatSocket = new WebSocket(
+                `${protocol}//${window.location.host}/wss/chat/{{ chatroom.id }}/`
+            );
 
-  chatSocket.onclose = function(e) {
-    console.error('Chat socket closed unexpectedly');
-  };
+            chatSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                console.log('Received data from WebSocket:', data);
+                
+                // Only append message if it contains HTML and isn't already in the list
+                const messageList = document.getElementById('message-list');
+                if (messageList && data.html) {
+                    const messageId = data.message.id;
+                    if (!document.querySelector(`[data-message-id="${messageId}"]`)) {
+                        messageList.insertAdjacentHTML('beforeend', data.html);
+                        scrollToBottom();
+                    }
+                }
+            };
 
-  // WebSocket connection for chatroom list updates
-  const chatroomListSocket = new WebSocket(
-    'ws://' + window.location.host + '/wss/chatroom_list/'
-  );
+            chatSocket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
 
-  chatroomListSocket.onmessage = function(e) {
-  const data = JSON.parse(e.data);
-  if (data.type === 'chatroom_list_update') {
-    // Update the entire chatroom list by replacing the content
-    const chatroomListContainer = document.querySelector('.mailbox .message-center');
-    if (chatroomListContainer) {
-      chatroomListContainer.innerHTML = data.html; // Replace the entire list with updated HTML
-    }
-  }
-};
+            chatSocket.onclose = function(e) {
+                console.log('Chat socket closed:', e);
+                
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    console.log(`Attempting to reconnect... (${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+                    reconnectAttempts++;
+                    setTimeout(connectWebSocket, 3000);
+                } else {
+                    console.log('Max reconnection attempts reached');
+                }
+            };
 
+            chatSocket.onopen = function() {
+                console.log('WebSocket connected');
+                reconnectAttempts = 0;
+            };
 
-  chatroomListSocket.onclose = function(e) {
-    console.error('Chatroom list socket closed unexpectedly');
-  };
+            return chatSocket;
+        }
+
+        // Initial connection
+        let chatSocket = connectWebSocket();
+        
+        // Initial scroll to bottom
+        scrollToBottom();
+    });
 </script>
-
 
 {% endblock %}
 {% endblock %}
