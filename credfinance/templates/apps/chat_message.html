@@ -19,7 +19,12 @@
             <h6 class="font-medium">{{ message.sender.name }}</h6> 
             {% endif %}
             <div class="box {% if message.sender_type == 'agent' %} bg-light-inverse {% else %} bg-light-info {% endif %}">
-                {{ message.content }}
+                {% if message.content %}
+                    <p>{{ message.content }}</p>
+                {% endif %}
+                <!-- {% if message.image %}
+                    <img src="{{ message.image.url }}" style="max-width: 300px; " alt="Image message" class="img-fluid rounded">
+                {% endif %} -->
             </div>
         </div>
         <div class="chat-time">{{ message.timestamp }}</div>

@@ -6,6 +6,35 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseU
 from django.utils import timezone
 from datetime import timedelta
 
+class Company(models.Model):
+    name= models.CharField(max_length=50)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=50)
+    contact_person = models.CharField(max_length=50)
+    
+    def __str__(self):
+        return self.name
+class CompanyProfile(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_profile')
+    address = models.CharField(max_length=255)
+    tax_clearance = models.ImageField(upload_to='tax_clearance/')
+    bank_statement = models.ImageField(upload_to='bank_statement/')
+    cert_of_incorporation =  models.ImageField(upload_to='cert_of_incorporation/')
+
+    def __str__(self):
+        return self.company.name
+
+class CompanyAuthentication(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_authentication')
+    meta_url = models.TextField() 
+    meta_token = models.TextField()
+    phone_number = models.CharField(max_length=255)
+    phone_number_id = models.CharField(max_length=255)
+    business_id = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.company.name
+
 class MyAccountManager(BaseUserManager):
     def create_user(self, first_name, last_name, username, email, password=None):
         if not email:
@@ -53,6 +82,7 @@ class MyAccountManager(BaseUserManager):
         return user
 
 class Account(AbstractBaseUser, PermissionsMixin):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='user_company')
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     username = models.CharField(max_length=50)
@@ -126,3 +156,10 @@ class PasswordHistory(models.Model):
     user = models.ForeignKey('Account', on_delete=models.CASCADE)
     password = models.CharField(max_length=128)
     timestamp = models.DateTimeField(default=timezone.now)
+
+class UserProfile(models.Model):
+    user= models.OneToOneField(Account, on_delete = models.CASCADE)
+    profile_picture = models.ImageField(blank = True, upload_to="userprofile",  default='/images/avatar.png')
+    address =models.CharField(max_length=255)
+    def __str__(self):
+        return self.user.first_name

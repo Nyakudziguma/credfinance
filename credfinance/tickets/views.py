@@ -1,5 +1,5 @@
 from django.shortcuts import render
 
 
-def tickets(request,):
-    return render(request, 'apps/tickets.html',)
+# def tickets(request,):
+#     return render(request, 'apps/tickets.html',)

@@ -1,7 +1,8 @@
 from django.db import models
-from accounts.models import Account
+from accounts.models import Account, Company
 
 class Client(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=255, unique=True) 
     email = models.EmailField(blank=True, null =True) 
@@ -42,7 +43,8 @@ class Message(models.Model):
     chatroom = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE)
     sender_type = models.CharField(max_length=10, choices=[('agent', 'Agent'), ('client', 'Client')])
     sender_id = models.PositiveIntegerField()  
-    content = models.TextField()
+    content = models.TextField(blank=True, null=True)
+    image = models.FileField(upload_to='chat_files/', blank=True, null=True) 
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 

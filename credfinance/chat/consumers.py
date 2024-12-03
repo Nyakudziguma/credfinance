@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.db.models import Max
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
-
+from balances.models import CompanyBalance
 
 class ChatConsumer(WebsocketConsumer):
     permission_classes = [AllowAny]
@@ -232,7 +232,8 @@ class ChatListConsumer(WebsocketConsumer):
                 'id': chatroom.id,
                 'client_name': chatroom.client.name,
                 'latest_message': latest_message.content if latest_message else 'No messages yet',
-                'timestamp': latest_message.timestamp.strftime('%Y-%m-%d %H:%M:%S') if latest_message else chatroom.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                'timestamp': latest_message.timestamp.strftime('%Y-%m-%d %H:%M:%S') if latest_message else chatroom.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_read': latest_message.is_read,
             })
         return chatroom_list
     
@@ -249,6 +250,10 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
             total_messages = await self.get_messages_count()
             unread_messages = await self.get_unread_messages()
             read_messages = await self.get_read_messages()
+            total_users = await self.get_total_users(user)
+            company_balance = await self.get_company_balance(user)
+            
+            
 
             await self.send_json({
                 'type': 'chatroom_count',
@@ -256,6 +261,8 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
                 'total_messages': total_messages,
                 'unread_messages': unread_messages,
                 'read_messages': read_messages,
+                'total_users': total_users,
+                'company_balance': company_balance,
             })
         else:
             print("User is not authenticated")
@@ -271,6 +278,8 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
             'total_messages': event['total_messages'],
             'unread_messages':event['unread_messages'],
             'read_messages':event['unread_messages'],
+            'total_users':event['total_users'],
+            'company_balance': event['company_balance']
         })
 
     async def get_chatroom_count(self):
@@ -284,4 +293,14 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
 
     async def get_read_messages(self):
         return await database_sync_to_async(lambda: Message.objects.filter(is_read=True).count())()
+    
+    async def get_total_users(self, user):
+        return await database_sync_to_async(lambda: Client.objects.filter(company=user.company).count())()
+    
+    async def get_company_balance(self, user):
+        try:
+            balance = await database_sync_to_async(lambda: CompanyBalance.objects.get(company=user.company))()
+            return str(balance.balance)  
+        except CompanyBalance.DoesNotExist:
+            return "0"
 

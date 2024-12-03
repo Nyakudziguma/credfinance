@@ -14,6 +14,7 @@ from pathlib import Path
 from decouple import config
 import datetime
 from datetime import timedelta
+from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,6 +55,9 @@ INSTALLED_APPS = [
     'tickets',
     'calender',
     'bot',
+    'bwm',
+    'balances',
+    'api_client',
 
 ]
 
@@ -98,6 +102,8 @@ CHANNEL_LAYERS = {
         },
     },
 }
+LOGIN_URL = '/accounts/login/'
+LOGOUT_REDIRECT_URL = 'login'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -251,5 +257,32 @@ LOGGING = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:8000',  # Add your server's origin here
+    'http://127.0.0.1:8000',  
+    'https://finance.credspace.co.zw'
 ]
+
+CELERY_BROKER_URL = 'amqp://guest@localhost//'
+result_backend = 'rpc://'
+
+LOGGING = {
+    "version": 1,  
+    "disable_existing_loggers": False,  
+    "handlers": {
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "application.log",
+        },
+    },
+}
+
+MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
+
+MESSAGE_TAGS = {
+    messages.DEBUG: 'secondary',
+    messages.INFO: 'info',
+    messages.SUCCESS: 'success',
+    messages.WARNING: 'warning',
+    messages.ERROR: 'danger',
+}
+WHATSAPP_URL = config('WHATSAPP_URL')
+WHATSAPP_TOKEN=config('WHATSAPP_TOKEN')

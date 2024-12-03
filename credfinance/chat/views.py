@@ -4,13 +4,17 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404,redirect
 from django.db.models import Max
 from django.views.decorators.csrf import csrf_exempt
-from accounts.models import Account
+from accounts.models import Account, CompanyAuthentication
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.template.loader import render_to_string
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-
+from bot.messageFunctions import sendWhatsAppMessage
+from balances.models import CompanyBalance
+import requests
+from django.http import JsonResponse
+from django.urls import reverse
 
 def handle_client_message(phone_number, message_content):
     """
@@ -19,6 +23,7 @@ def handle_client_message(phone_number, message_content):
     try:
         try:
             client = Client.objects.get(phone_number=phone_number)
+            company = client.company
         except Client.DoesNotExist:
             client = Client.objects.create(
                 phone_number=phone_number,
@@ -76,7 +81,8 @@ def handle_client_message(phone_number, message_content):
                 "chatroom_id": chatroom.id,
                 "message_content": content,
                 "timestamp": formatted_timestamp,
-                "sender_name": client.name
+                "sender_name": client.name,
+                "is_read": message.is_read,
             }
         )
         
@@ -84,6 +90,10 @@ def handle_client_message(phone_number, message_content):
         total_messages = Message.objects.count()
         unread_messages = Message.objects.filter(is_read=False).count()
         read_messages = Message.objects.filter(is_read=True).count()
+        total_users = Client.objects.filter(company=company).count()
+        company_balance = CompanyBalance.objects.get(company=company)
+        balance = str(company_balance.balance)
+
         async_to_sync(channel_layer.group_send)(
             "dashboard_stats",
             {
@@ -92,6 +102,8 @@ def handle_client_message(phone_number, message_content):
                 "total_messages": total_messages,
                 'unread_messages': unread_messages,
                 'read_messages': read_messages,
+                'total_users': total_users,
+                'company_balance': balance,
             }
         )
        
@@ -116,7 +128,8 @@ def send_message(request, chatroom_id):
         try:
             chatroom = ChatRoom.objects.get(id=chatroom_id)
             content = request.POST.get('content', '').strip()
-            
+            image = request.FILES.get('image', None)
+
             if not content:
                 return HttpResponse('')
             
@@ -125,7 +138,8 @@ def send_message(request, chatroom_id):
                 chatroom=chatroom,
                 content=content,
                 sender_type='agent',
-                sender_id=sender.id
+                sender_id=sender.id,
+                image=image if image else None,
             )
 
             chatroom.latest_message = message
@@ -146,6 +160,7 @@ def send_message(request, chatroom_id):
                         'sender_name': sender.first_name,
                         'sender_type': 'agent',
                         'content': content,
+                        "image_url": message.image.url if message.image else None,
                         'timestamp': message_context['timestamp'],
                     }
                 }
@@ -158,12 +173,17 @@ def send_message(request, chatroom_id):
                     "message_content": content,
                     "timestamp": message_context['timestamp'],
                     "sender_name": sender.first_name,
+                    "is_read": message.is_read,
                 }
             )
             total_chatrooms = ChatRoom.objects.count()
             total_messages = Message.objects.count()
             unread_messages = Message.objects.filter(is_read=False).count()
             read_messages = Message.objects.filter(is_read=True).count()
+            total_users = Client.objects.filter(company=request.user.company).count()
+            company_balance = CompanyBalance.objects.get(company=request.user.company)
+            balance = str(company_balance.balance)
+
             async_to_sync(channel_layer.group_send)(
                 "dashboard_stats",
                 {
@@ -172,27 +192,41 @@ def send_message(request, chatroom_id):
                     "total_messages": total_messages,
                     'unread_messages': unread_messages,
                     'read_messages': read_messages,
+                    'total_users': total_users,
+                    'company_balance': balance,
                 }
             )
+            
+            try:
+                company = CompanyAuthentication.objects.get(company=request.user.company)
+                token = company.meta_token
+                meta_url = company.meta_url
+                sendWhatsAppMessage(chatroom.client.phone_number, content, token, meta_url)
+            except Exception as e:
+                print(e)
 
-            print(f'{chatroom.client.phone_number}, {content}')
-
-            return HttpResponse('')  # Return empty response for HTMX
+            return HttpResponse('')  
             
         except Exception as e:
+            print(e)
             return HttpResponse(status=500)
             
     return HttpResponse(status=400)
 
+@login_required
 def chats(request, chatroom_id=None):
-    chatrooms = ChatRoom.objects.all().annotate(latest_message_timestamp=Max('messages__timestamp'))
-
+    chatrooms = ChatRoom.objects.annotate(
+        latest_message_timestamp=Max('messages__timestamp')
+    ).order_by('-latest_message_timestamp')  
     for chatroom in chatrooms:
         chatroom.latest_message = Message.objects.filter(chatroom=chatroom).order_by('-timestamp').first()
 
     if chatroom_id:
         chatroom = get_object_or_404(ChatRoom, id=chatroom_id)
         messages = Message.objects.filter(chatroom=chatroom).order_by('timestamp')
+        for message in messages:
+            message.is_read = True
+            message.save()
     else:
         chatroom = None
         messages = []
@@ -205,6 +239,7 @@ def chats(request, chatroom_id=None):
 
 
 
+@login_required
 def create_message(request, chatroom_id):
     if request.method == 'POST':
         content = request.POST.get('content')

@@ -21,7 +21,7 @@
                     <a href="{% url 'chatroom' chatroom.id %}" class="message-item" data-chatroom-id="{{ chatroom.id }}">
                         <span class="user-img">
                             <img src="{% static 'assets/images/users/user (1).png' %}" alt="agent" class="rounded-circle">
-                            <span class="profile-status online pull-right"></span>
+                            <span class="profile-status {% if not chatroom.latest_message.is_read %}online{% endif %} pull-right"></span>
                         </span>
                         <div class="mail-contnet">
                             <h5 class="message-title">{{ chatroom.client.name }}</h5> 
@@ -60,24 +60,26 @@
                         <form 
                             id="messageForm"
                             hx-post="{% if chatroom %}{% url 'send_message' chatroom.id %}{% else %}#{% endif %}"
-
+                            enctype="multipart/form-data"
                             hx-target="#message-list"
                             hx-swap="beforeend"
                         >
                             {% csrf_token %}
                             <div class="input-field m-t-0 m-b-0">
-                                <input 
+                                <textarea 
                                     id="messageInput" 
                                     name="content" 
                                     placeholder="Type and enter" 
                                     class="form-control border-0" 
-                                    type="text" 
+                                    type="textarea" 
                                     required
-                                >
+                                ></textarea>
                             </div>
+                            <input type="file" name="image"  class="input-field m-t-0 m-b-0">
                         </form>
                     </div>
                     <div class="col-3">
+                        
                         <button 
                             type="button" 
                             class="btn-circle btn-lg btn-cyan float-right text-white"
@@ -129,10 +131,16 @@
         // Enter key handler
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                e.preventDefault();
-                submitMessage();
+                e.preventDefault(); 
+                const input = e.target; 
+
+                const cursorPos = input.selectionStart;
+                const value = input.value;
+                input.value = value.substring(0, cursorPos) + '\n' + value.substring(cursorPos);
+
+                input.selectionStart = input.selectionEnd = cursorPos + 1;
             }
-        });
+                });
 
         // Make submitMessage available globally
         window.submitMessage = submitMessage;

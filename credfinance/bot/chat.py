@@ -5,8 +5,8 @@ import numpy as np
 import random
 
 import nltk
-nltk.download('punkt_tab')
-nltk.download('wordnet')
+# nltk.download('punkt_tab')
+# nltk.download('wordnet')
 from nltk.stem import WordNetLemmatizer
 
 from tensorflow.keras.models import load_model
@@ -56,8 +56,7 @@ def get_response(intents_list, intents_json):
 
 print("Bot is running!")
 
-while True:
-    message = input("")
+def faq_message(message):
     ints = predict_class(message)
     res= get_response(ints, intents)
-    print(res)
+    return res

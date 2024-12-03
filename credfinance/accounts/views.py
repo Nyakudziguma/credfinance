@@ -6,6 +6,9 @@ from .models import Account
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib import auth
+from django.contrib.auth import logout
+from django.http import HttpResponseRedirect
 import random
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -22,6 +25,15 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.contrib.auth.hashers import make_password
 from utils.utils import Utils
+from django.contrib.auth.decorators import login_required
+from .forms import ProfileUpdateForm, AccountUpdateForm
+from django.contrib import messages
+
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import authenticate, login
+from django.urls import reverse
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -198,3 +210,120 @@ class ResetPasswordAPIView(APIView):
             return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@login_required
+def profile(request):
+    user = request.user
+    if request.method == 'POST':
+        profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=user.userprofile)
+        account_form = AccountUpdateForm(request.POST, instance=user)
+        if profile_form.is_valid() and account_form.is_valid():
+            profile_form.save()
+            account_form.save()
+            messages.success(request, 'Your profile has been updated successfully.')
+            return redirect('profile') 
+        else:
+            messages.error(request, 'There was an error updating your profile. Please check the fields and try again.')
+    else:
+        profile_form = ProfileUpdateForm(instance=user.userprofile)
+        account_form = AccountUpdateForm(instance=user)
+
+    context = {
+        'profile_form': profile_form,
+        'account_form': account_form,
+        'user': user
+    }
+    return render(request, 'accounts/user-profile.html', context)
+
+
+
+@login_required
+def custom_password_change(request):
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+
+        if not old_password or not new_password or not confirm_password:
+            messages.error(request, "All fields are required.")
+            return redirect('profile')
+
+        user = request.user
+
+        if not user.check_password(old_password):
+            messages.error(request, "The old password is incorrect.")
+            return redirect('profile')
+
+        if new_password != confirm_password:
+            messages.error(request, "The new password and confirm password do not match.")
+            return redirect('profile')
+
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            for error in e.messages:
+                messages.error(request, error)
+            return redirect('profile')
+
+        user.set_password(new_password)
+        user.save()
+
+        ip_address = request.META.get('HTTP_X_FORWARDED_FOR')
+        if ip_address:
+            ip_address = ip_address.split(',')[0]
+        else:
+            ip_address = request.META.get('REMOTE_ADDR')
+
+        Utils.log_audit_trail(
+            user=user,
+            action="Password Reset",
+            model_name="Account",
+            model_id=user.id,
+            previous_value=old_password,
+            new_value=user.password,  
+            ip_address=ip_address
+        )
+
+        update_session_auth_hash(request, user)
+        messages.success(request, "Your password has been changed successfully.")
+        return redirect('profile')
+
+    return render(request, 'accounts/user-profile.html')
+
+
+
+def custom_login(request):
+    if request.method == "POST":
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+
+        user = auth.authenticate(email = email, password = password)
+        if user is not None:
+            auth.login(request, user)
+
+            ip_address = request.META.get('HTTP_X_FORWARDED_FOR')
+            if ip_address:
+                ip_address = ip_address.split(',')[0]
+            else:
+                ip_address = request.META.get('REMOTE_ADDR')
+
+            Utils.log_audit_trail(
+                user=user,
+                action="User Logged In",
+                model_name="Account",
+                model_id=user.id,
+                previous_value='',
+                new_value='',  
+                ip_address=ip_address
+            )
+            next_url = request.GET.get('next', reverse('home'))
+            return HttpResponseRedirect(next_url)
+        else:
+            messages.error(request, "Invalid username or password.")
+    
+    return render(request, 'accounts/login.html')
+
+def custom_logout(request):
+    logout(request)  
+    return redirect('login')

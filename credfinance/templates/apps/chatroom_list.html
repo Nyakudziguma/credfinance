@@ -41,11 +41,12 @@
 
             // Add updated chatrooms
             chatrooms.forEach(chatroom => {
+                const isOnline = chatroom.is_read ? "" : "online";
                 const chatroomHtml = `
                     <a href="/chat/chats/${chatroom.id}/" class="message-item" data-chatroom-id="${chatroom.id}">
                         <span class="user-img">
                             <img src="/static/assets/images/users/user (1).png" alt="agent" class="rounded-circle">
-                            <span class="profile-status online pull-right"></span>
+                           <span class="profile-status ${isOnline} pull-right"></span>
                         </span>
                         <div class="mail-contnet">
                             <h5 class="message-title">${chatroom.client_name}</h5>
