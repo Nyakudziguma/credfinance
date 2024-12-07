@@ -37,10 +37,11 @@ class HandleClientMessageView(APIView):
         try:
             phone_number = request.data.get('phone_number')
             message_content = request.data.get('message_content')
+            image = request.FILES.get('image')
 
-            if not phone_number or not message_content:
+            if not phone_number:
                 return Response(
-                    {"success": False, "error": "Phone number and message content are required."},
+                    {"success": False, "error": "Phone number ais required."},
                     status=400
                 )
 
@@ -59,6 +60,7 @@ class HandleClientMessageView(APIView):
             message = Message.objects.create(
                 chatroom=chatroom,
                 content=message_content,
+                image=image if image else None,
                 sender_type='client',
                 sender_id=client.id
             )
@@ -91,6 +93,7 @@ class HandleClientMessageView(APIView):
                         'sender_type': 'client',
                         'content': message_content,
                         'timestamp': formatted_timestamp,
+                        "image_url": message.image.url if message.image else None,
                     }
                 }
             )

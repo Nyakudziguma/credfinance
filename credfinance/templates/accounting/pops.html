@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-5 align-self-center">
+            <h4 class="page-title">Proof of Payment</h4>
+        </div>
+        <div class="col-7 align-self-center">
+            <div class="d-flex align-items-center justify-content-end">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'home' %}">Home</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">POPs</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="button-group">
+        <button type="button" class="btn waves-effect waves-light btn-success" data-toggle="modal" data-target="#addPOP" data-whatever="@mdo">Add POP</button>
+    </div>
+    <div class="row">
+        {% include 'includes/messages.html' %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Proof of Payments</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>POP Id</th>
+                                    <th>Request ID</th>
+                                    <th>Payment Method</th>
+                                    <th>Payment Date</th>
+                                    <th>Slip</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for response in page_obj %}
+                                <tr>
+                                    <td>{{ response.uuid }}</td>
+                                    <td>{{ response.expense_request.uuid }}</td>
+                                    <td>{{ response.payment_method }}</td>
+                                    <td>{{ response.payment_date }}</td>
+                                    <td>
+                                        {% if response.payment_file %}
+                                        <img src="{{ response.payment_file.url }}" 
+                                             alt="Slip" 
+                                             class="img-thumbnail" 
+                                             style="width: 50px; height: 50px; cursor: pointer;" 
+                                             data-toggle="modal" 
+                                             data-target="#viewSlipModal" 
+                                             data-img-url="{{ response.payment_file.url }}">
+                                        {% else %}
+                                        No Slip
+                                        {% endif %}
+                                    </td>
+                                    
+                                </tr>
+                           
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                        <!-- Add Quotation Modal -->
+                        <div class="modal fade" id="addPOP" tabindex="-1" role="dialog" aria-labelledby="addQuotationLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="addQuotationLabel">Add New POP</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form method="POST" action="{% url 'pops' %}" enctype="multipart/form-data">
+                                            {% csrf_token %}
+                                            
+                                            <!-- Search and Select for Expense Request -->
+                                            <div class="form-group">
+                                                <label for="expense-search">Search Expense Request</label>
+                                                <input type="text" class="form-control" id="expense-search" placeholder="Enter Expense Request ID">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="expense-select">Select Expense Request</label>
+                                                <select class="form-control" id="expense-select" name="expense_request" required>
+                                                    <option value="">--- Select an Expense Request ---</option>
+                                                    {% for expense in expense_requests %}
+                                                    <option value="{{ expense.id }}">{{ expense.description }} ({{ expense.uuid }})</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="Quotation_type">Payment Method</label>
+                                                <select class="form-control" id="payment_method" name="payment_method" required>
+                                                    <option value="cash">Cash</option>
+                                                    <option value="bank">Bank</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="quote_date">Payment Date</label>
+                                                <input type="date" class="form-control" id="payment_date" name="payment_date" required>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="Quotation_slip">POP Slip</label>
+                                                <input type="file" class="form-control" id="payment_file" name="payment_file" required>
+                                            </div>
+
+                                            <button type="submit" class="btn btn-success">Submit</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="modal fade" id="viewSlipModal" tabindex="-1" role="dialog" aria-labelledby="viewSlipModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="viewSlipModalLabel">POP Slip</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img id="modalSlipImage" src="" alt="POP Slip" class="img-fluid">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="pagination float-right">
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in page_obj.paginator.page_range %}
+                                    {% if page_num == page_obj.number %}
+                                        <li class="page-item active">
+                                            <a class="page-link" href="#">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% block scripts %}
+
+<script>
+ document.addEventListener('DOMContentLoaded', function () {
+        const thumbnails = document.querySelectorAll('.img-thumbnail');
+
+        thumbnails.forEach(function (thumbnail) {
+            thumbnail.addEventListener('click', function () {
+                console.log("Thumbnail clicked:", this.getAttribute('data-img-url'));
+                const modalSlipImage = document.getElementById('modalSlipImage');
+                modalSlipImage.src = this.getAttribute('data-img-url');
+                $('#viewSlipModal').modal('show');
+            });
+        });
+    });
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('expense-search');
+    const expenseDropdown = document.getElementById('expense-select');
+
+    searchInput.addEventListener('input', function () {
+        const searchValue = searchInput.value.toLowerCase();
+        const options = expenseDropdown.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            const text = option.text.toLowerCase();
+
+            if (text.includes(searchValue)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        }
+    });
+});
+
+</script>
+{% endblock %}
+
+{% endblock %}

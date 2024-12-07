@@ -1,289 +1,270 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import render
 from .models import *
-from .serializers import *
-from utils.utils import Utils, IsFinanceManager  
+from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from django.contrib import messages
+from django.core.mail import EmailMessage
+from django.http import JsonResponse
 
-class ExpenseRequestAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsFinanceManager]
+@login_required
+def expense_requests(request,):
+    responses = ExpenseRequest.objects.all().order_by('-request_date')  
+    paginator = Paginator(responses, 10)  
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'accounting/requests.html', {'page_obj': page_obj})
 
-    def get(self, request):
-        expense_requests = ExpenseRequest.objects.all()
-        serializer = ExpenseRequestSerializer(expense_requests, many=True)
-        return Response(serializer.data)
 
-    def post(self, request):
-        serializer = ExpenseRequestSerializer(data=request.data)
-        if serializer.is_valid():
-            expense_request = serializer.save(requested_by=request.user)
+@login_required
+def approve_request(request, uuid):
+    if request.user.user_type == 'finance_manager':
+        expense_request = get_object_or_404(ExpenseRequest, uuid=uuid)
+        expense_request.status = 'Approved'
+        expense_request.approved_by = request.user
+        expense_request.date_approved = timezone.now()
+        expense_request.save()
+        messages.success(request, "Expense request has been approved!")
 
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Created Expense Request",
-                model_name="ExpenseRequest",
-                model_id=expense_request.id,
-                new_value=str(expense_request.amount),
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        email_subject = "Expense Request Approved"
+        email_body = (
+            f"Hi {expense_request.requested_by.first_name},\n\n"
+            f"Your expense request has been approved:\n\n"
+            f"Request ID: {expense_request.uuid}\n"
+            f"Purpose: {expense_request.purpose}\n"
+            f"Approved By: {expense_request.approved_by.first_name}\n"
+            f"Date Approved: {expense_request.date_approved}\n\n"
+            f"Thank you!"
+        )
 
-    def put(self, request, pk):
+        email = EmailMessage(
+            email_subject,
+            email_body,
+            to=[expense_request.requested_by.email]
+        )
+
         try:
-            expense_request = ExpenseRequest.objects.get(pk=pk)
-            previous_approved_status = expense_request.approved
+            email.send()
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error sending email: {str(e)}'})
 
-            expense_request.approved = True  
+        return redirect('expense_requests')  
+
+    return redirect('home')  
+
+@login_required
+def reject_request(request, uuid):
+    if request.user.user_type == 'finance_manager':
+        expense_request = get_object_or_404(ExpenseRequest, uuid=uuid)
+        if request.method == 'POST':
+            rejection_reason = request.POST.get('rejection_reason')
+            expense_request.status = 'Rejected'
             expense_request.approved_by = request.user
+            expense_request.rejection_reason = rejection_reason
+            expense_request.date_approved = timezone.now()
             expense_request.save()
 
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Approved Expense Request",
-                model_name="ExpenseRequest",
-                model_id=expense_request.id,
-                previous_value=str(previous_approved_status),
-                new_value=str(expense_request.approved),
-                ip_address=request.META.get("REMOTE_ADDR")
+            messages.success(request, "Expense request has been rejected!")
+
+            email_subject = "Expense Request Rejected"
+            email_body = (
+                f"Hi {expense_request.requested_by.first_name},\n\n"
+                f"Your expense request has been rejected:\n\n"
+                f"Request ID: {expense_request.uuid}\n"
+                f"Purpose: {expense_request.purpose}\n"
+                f"Rejected By: {expense_request.approved_by.first_name}\n"
+                f"Date Rejected: {expense_request.date_approved}\n\n"
+                f"Rejection Reason: {expense_request.rejection_reason}\n\n"
+                f"Thank you!"
             )
-            return Response({'message': 'Expense request approved successfully.'}, status=status.HTTP_200_OK)
 
-        except ExpenseRequest.DoesNotExist:
-            return Response({'error': 'Expense request not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-
-class IncomeAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsFinanceManager]
-
-    def get(self, request):
-        income_entries = Income.objects.all()
-        serializer = IncomeSerializer(income_entries, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = IncomeSerializer(data=request.data)
-        if serializer.is_valid():
-            income = serializer.save(added_by=request.user)
-
-            if income.income_type == 'cash':
-                debit_account = "Cash"  
-                credit_account = "Cash Income"  
-            elif income.income_type == 'bank':
-                debit_account = "Bank" 
-                credit_account = "Bank Income"
-            else:
-                return Response({"error": "Invalid income type."}, status=status.HTTP_400_BAD_REQUEST)
-
-            amount = income.amount
-            description = f"Income received from {income.source}"
-
-            Utils.record_income_transaction(income, debit_account, credit_account, amount, description)
-
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Added Income",
-                model_name="Income",
-                model_id=income.id,
-                new_value=str(income.amount),
-                ip_address=request.META.get("REMOTE_ADDR")
+            email = EmailMessage(
+                email_subject,
+                email_body,
+                to=[expense_request.requested_by.email]
             )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+            try:
+                email.send()
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': f'Error sending email: {str(e)}'})
 
-class QuotationAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsFinanceManager]
-
-    def get(self, request):
-        expense_request_id = request.query_params.get('expense_request')
-        if expense_request_id:
-            quotations = Quotation.objects.filter(expense_request_id=expense_request_id)
+            return redirect('expense_requests')  
         else:
-            quotations = Quotation.objects.all()
-        
-        serializer = QuotationSerializer(quotations, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            return redirect('home')  
 
-    def post(self, request):
-        expense_request_id = request.data.get('expense_request')
+    return redirect('home')  
+
+@login_required
+def add_request(request):
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        purpose = request.POST.get('purpose')
+        
+        ExpenseRequest.objects.create(
+            amount=amount,
+            purpose=purpose,
+            requested_by=request.user,
+            status='Pending',
+            request_date=timezone.now()
+        )
+        messages.success(request, "Your expense request has been submitted!")
+        return redirect('expense_requests')
+    
+    return redirect('home')
+
+@login_required
+def income(request,):
+    responses = Income.objects.all().order_by('-date_received')  
+    paginator = Paginator(responses, 10)  
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'accounting/income.html', {'page_obj': page_obj})
+
+
+@login_required
+def add_income(request):
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        source = request.POST.get('source')
+        income_type = request.POST.get('income_type')
+        date_received = request.POST.get('date_received')
+        description = request.POST.get('description', '')
+        income_slip = request.FILES.get('income_slip', None)
+
+        Income.objects.create(
+            added_by=request.user,
+            amount=amount,
+            source=source,
+            income_type=income_type,
+            date_received=date_received,
+            description=description,
+            income_slip=income_slip,
+        )
+        messages.success(request, "Income added successfully")
+        return redirect('income')  
+    return redirect('home') 
+
+@login_required
+def quotations(request,):
+    responses = Quotation.objects.all().order_by('-quote_date')  
+    paginator = Paginator(responses, 10)  
+    page_number = request.GET.get('page')
+
+    expense_requests = ExpenseRequest.objects.all()
+    page_obj = paginator.get_page(page_number)
+    context = {
+        'expense_requests': expense_requests,
+        'page_obj': page_obj
+    }
+    
+    if request.method == "POST":
+        expense_request_id = request.POST.get("expense_request")
+        vendor_name = request.POST.get("vendor_name")
+        amount = request.POST.get("amount")
+        quote_type = request.POST.get("Quotation_type")
+        quote_date = request.POST.get("quote_date")
+        quote_file = request.FILES.get("quote_file")
+
         try:
             expense_request = ExpenseRequest.objects.get(id=expense_request_id)
         except ExpenseRequest.DoesNotExist:
-            return Response({"error": "Expense Request not found."}, status=status.HTTP_404_NOT_FOUND)
+            messages.error(request, "Selected Expense Request does not exist.")
+            return redirect("quotations") 
+        quotation = Quotation(
+            expense_request=expense_request,
+            vendor_name=vendor_name,
+            amount=amount,
+            status="Pending",  
+            quote_date=quote_date,
+            quote_file=quote_file,
+            added_by=request.user,  
+        )
 
-        serializer = QuotationSerializer(data=request.data)
-        if serializer.is_valid():
-            quotation = serializer.save(added_by=request.user, expense_request=expense_request)
+        quotation.save()
 
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Added Quotation",
-                model_name="Quotation",
-                model_id=quotation.id,
-                new_value=str(serializer.validated_data['amount']),
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        messages.success(request, "Quotation added successfully!")
+        return redirect("quotations") 
+    return render(request, 'accounting/quotations.html', context)
+    
+@login_required
+def invoices(request,):
+    responses = Invoice.objects.all().order_by('-invoice_date')  
+    paginator = Paginator(responses, 10)  
+    page_number = request.GET.get('page')
 
-    def put(self, request, pk):
-        try:
-            quotation = Quotation.objects.get(id=pk)
-        except Quotation.DoesNotExist:
-            return Response({"error": "Quotation not found."}, status=status.HTTP_404_NOT_FOUND)
+    expense_requests = ExpenseRequest.objects.all()
+    page_obj = paginator.get_page(page_number)
+    context = {
+        'expense_requests': expense_requests,
+        'page_obj': page_obj
+    }
+    
+    if request.method == "POST":
+        expense_request_id = request.POST.get("expense_request")
+        vendor_name = request.POST.get("vendor_name")
+        amount = request.POST.get("amount")
+        invoice_date = request.POST.get("invoice_date")
+        invoice_file = request.FILES.get("invoice_file")
 
-        selected_status = request.data.get('selected')
-        if selected_status is not None:
-            quotation.selected = selected_status
-            quotation.save()
-
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Updated Quotation Selected Status",
-                model_name="Quotation",
-                model_id=quotation.id,
-                previous_value=str(not quotation.selected), 
-                new_value=str(quotation.selected),          
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-            return Response({"message": "Quotation updated successfully."}, status=status.HTTP_200_OK)
-
-        return Response({"error": "Selected status not provided."}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class InvoiceAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsFinanceManager]
-
-    def get(self, request):
-        expense_request_id = request.query_params.get('expense_request')
-        if expense_request_id:
-            invoices = Invoice.objects.filter(expense_request_id=expense_request_id)
-        else:
-            invoices = Invoice.objects.all()
-
-        serializer = InvoiceSerializer(invoices, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        expense_request_id = request.data.get('expense_request')
         try:
             expense_request = ExpenseRequest.objects.get(id=expense_request_id)
         except ExpenseRequest.DoesNotExist:
-            return Response({"error": "Expense Request not found."}, status=status.HTTP_404_NOT_FOUND)
+            messages.error(request, "Selected Expense Request does not exist.")
+            return redirect("quotations") 
+        invoice = Invoice(
+            expense_request=expense_request,
+            vendor_name=vendor_name,
+            amount=amount,
+            invoice_date=invoice_date,
+            invoice_file=invoice_file,
+            added_by=request.user,  
+        )
 
-        serializer = InvoiceSerializer(data=request.data)
-        if serializer.is_valid():
-            invoice = serializer.save(added_by=request.user, expense_request=expense_request)
+        invoice.save()
 
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Added Invoice",
-                model_name="Invoice",
-                model_id=invoice.id,
-                new_value=str(serializer.validated_data['amount']),
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        messages.success(request, "Invoice added successfully!")
+        return redirect("invoices") 
+    return render(request, 'accounting/invoices.html', context)
+    
+  
+@login_required
+def pops(request,):
+    responses = ProofOfPayment.objects.all().order_by('-payment_date')  
+    paginator = Paginator(responses, 10)  
+    page_number = request.GET.get('page')
 
-    def put(self, request, pk):
-        try:
-            invoice = Invoice.objects.get(id=pk)
-        except Invoice.DoesNotExist:
-            return Response({"error": "Invoice not found."}, status=status.HTTP_404_NOT_FOUND)
+    expense_requests = ExpenseRequest.objects.all()
+    page_obj = paginator.get_page(page_number)
+    context = {
+        'expense_requests': expense_requests,
+        'page_obj': page_obj
+    }
+    
+    if request.method == "POST":
+        expense_request_id = request.POST.get("expense_request")
+        payment_date = request.POST.get("payment_date")
+        payment_method = request.POST.get("payment_method")
+        payment_file = request.FILES.get("payment_file")
 
-        serializer = InvoiceSerializer(invoice, data=request.data, partial=True)  
-        if serializer.is_valid():
-            previous_value = str(invoice.amount)  
-            invoice = serializer.save()
-
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Updated Invoice",
-                model_name="Invoice",
-                model_id=invoice.id,
-                previous_value=previous_value,
-                new_value=str(invoice.amount),  
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class ProofOfPaymentAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsFinanceManager]
-
-    def get(self, request):
-        expense_request_id = request.query_params.get('expense_request')
-        if expense_request_id:
-            proof_of_payments = ProofOfPayment.objects.filter(expense_request_id=expense_request_id)
-        else:
-            proof_of_payments = ProofOfPayment.objects.all()
-
-        serializer = ProofOfPaymentSerializer(proof_of_payments, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        expense_request_id = request.data.get('expense_request')
         try:
             expense_request = ExpenseRequest.objects.get(id=expense_request_id)
         except ExpenseRequest.DoesNotExist:
-            return Response({"error": "Expense Request not found."}, status=status.HTTP_404_NOT_FOUND)
+            messages.error(request, "Selected Expense Request does not exist.")
+            return redirect("quotations") 
+        pop = ProofOfPayment(
+            expense_request=expense_request,
+            payment_date=payment_date,
+            payment_method=payment_method,
+            payment_file=payment_file,
+            added_by=request.user,  
+        )
 
-        serializer = ProofOfPaymentSerializer(data=request.data)
-        if serializer.is_valid():
-            proof_of_payment = serializer.save(added_by=request.user, expense_request=expense_request)
+        pop.save()
 
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Added Proof of Payment",
-                model_name="ProofOfPayment",
-                model_id=proof_of_payment.id,
-                new_value=serializer.validated_data['transaction_id'],
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-
-            debit_account, credit_account = self.get_accounts_based_on_payment_method(serializer.validated_data['payment_method'], proof_of_payment.amount)
-
-            if debit_account and credit_account:
-                Utils.record_expense_transaction(proof_of_payment, debit_account, credit_account, proof_of_payment.amount, "Payment received for Expense Request ID: {}".format(expense_request_id))
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def get_accounts_based_on_payment_method(self, payment_method, amount):
-        """ Logic to determine the debit and credit accounts based on the payment method """
-        if payment_method == 'cash':
-            return 'cash_account_id', 'income_account_id'  
-        elif payment_method == 'bank':
-            return 'bank_account_id', 'income_account_id' 
-        return None, None
-
-    def put(self, request, pk):
-        try:
-            proof_of_payment = ProofOfPayment.objects.get(id=pk)
-        except ProofOfPayment.DoesNotExist:
-            return Response({"error": "Proof of Payment not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = ProofOfPaymentSerializer(proof_of_payment, data=request.data, partial=True)  
-        if serializer.is_valid():
-            previous_value = str(proof_of_payment.transaction_id)  
-            proof_of_payment = serializer.save()
-
-            Utils.log_audit_trail(
-                user=request.user,
-                action="Updated Proof of Payment",
-                model_name="ProofOfPayment",
-                model_id=proof_of_payment.id,
-                previous_value=previous_value,
-                new_value=str(proof_of_payment.transaction_id),  
-                ip_address=request.META.get("REMOTE_ADDR")
-            )
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        messages.success(request, "POP added successfully!")
+        return redirect("pops") 
+    return render(request, 'accounting/pops.html', context)
+    

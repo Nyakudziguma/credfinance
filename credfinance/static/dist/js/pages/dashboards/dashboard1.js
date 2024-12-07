@@ -10,13 +10,7 @@ $(function() {
     // ============================================================== 
     // sales ratio
     // ============================================================== 
-    var chart = new Chartist.Line('.sales', {
-        labels: [1, 2, 3, 4, 5, 6, 7],
-        series: [
-            [24.5, 20.3, 42.7, 32, 34.9, 48.6, 40],
-            [8.9, 5.8, 21.9, 5.8, 16.5, 6.5, 14.5]
-        ]
-    }, {
+    var chart = new Chartist.Line('.sales', clientData, {
         low: 0,
         high: 48,
         showArea: true,
@@ -74,12 +68,7 @@ $(function() {
     var chart = c3.generate({
         bindto: '#campaign',
         data: {
-            columns: [
-                ['Un-opened', 35],
-                ['Clicked', 15],
-                ['Open', 10],
-                ['Bounced', 18],
-            ],
+            columns: campaignData,
 
             type: 'donut',
             tooltip: {
@@ -97,7 +86,7 @@ $(function() {
             hide: true
         },
         color: {
-            pattern: ['#137eff', '#8b5edd', '#5ac146', '#eceff1']
+            pattern: ['#5ac146','#FF0000', '#8b5edd']
         }
     });
 

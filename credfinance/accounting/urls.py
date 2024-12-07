@@ -2,10 +2,13 @@ from django.urls import path
 from .views import *
 
 urlpatterns = [
-    path('expenses/', ExpenseRequestAPIView.as_view(), name='expense-request'),
-    path('income/', IncomeAPIView.as_view(), name='income'),
-    path('quotations/', QuotationAPIView.as_view(), name='quotation'),
-    path('invoice/', InvoiceAPIView.as_view(), name='invoice'),
-    path('proof_of_payment/', ProofOfPaymentAPIView.as_view(), name='proof-of-payment'),
-    
+    path('expense-request/', expense_requests , name='expense_requests'),
+    path('approve_request/<uuid:uuid>/', approve_request, name='approve_request'),
+    path('reject_request/<uuid:uuid>/', reject_request, name='reject_request'),
+    path('add_request/', add_request, name='add_request'),
+    path('income/', income, name='income'),
+    path('add_income/', add_income, name='add_income'),
+    path('quotations/', quotations, name='quotations'),
+    path('invoices/', invoices, name='invoices'),
+    path('pops/', pops, name='pops'),
 ]

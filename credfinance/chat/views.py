@@ -15,6 +15,8 @@ from balances.models import CompanyBalance
 import requests
 from django.http import JsonResponse
 from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+
 
 def handle_client_message(phone_number, message_content):
     """
@@ -104,6 +106,7 @@ def handle_client_message(phone_number, message_content):
                 'read_messages': read_messages,
                 'total_users': total_users,
                 'company_balance': balance,
+                
             }
         )
        
@@ -121,7 +124,7 @@ def handle_client_message(phone_number, message_content):
             "success": False,
             "error": str(e)
         }
-
+@csrf_exempt
 @login_required
 def send_message(request, chatroom_id):
     if request.method == 'POST':

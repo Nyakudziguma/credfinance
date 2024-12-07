@@ -28,6 +28,7 @@ urlpatterns = [
     path('', views.home, name = 'home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
+    path('accounting/', include('accounting.urls')),
     path('api/v1/', include('api_client.urls')),
     path('chat/', include('chat.urls')),
     path('calender/', include('calender.urls')),

@@ -11,15 +11,15 @@ class IncomeAdmin(admin.ModelAdmin):
 
 @admin.register(ExpenseRequest)
 class ExpenseRequestAdmin(admin.ModelAdmin):
-    list_display = ("id", "amount", "purpose", "request_date", "requested_by", "approved", "approved_by")
-    list_filter = ("approved", "request_date")
+    list_display = ("id", "amount", "purpose", "request_date", "requested_by", "status", "approved_by")
+    list_filter = ("status", "request_date")
     search_fields = ("purpose", "requested_by__username")
     readonly_fields = ("request_date",)
 
 @admin.register(Quotation)
 class QuotationAdmin(admin.ModelAdmin):
-    list_display = ("id", "added_by", "expense_request", "vendor_name", "amount", "quote_date", "selected")
-    list_filter = ("quote_date", "selected", "vendor_name")
+    list_display = ("id", "added_by", "expense_request", "vendor_name", "amount", "quote_date", "status")
+    list_filter = ("quote_date", "status", "vendor_name")
     search_fields = ("vendor_name",)
     readonly_fields = ("quote_date",)
 

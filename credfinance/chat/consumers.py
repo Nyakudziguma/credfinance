@@ -87,8 +87,9 @@ class ChatConsumer(WebsocketConsumer):
         content = data.get('content', '')
         sender_type = data.get('sender_type', '')
         sender_name = data.get('sender_name', '')
+        image =data.get('image', '')
         
-        message = self.create_message(self.chatroom, content, sender_type, sender_name)
+        message = self.create_message(self.chatroom, content, sender_type, sender_name, image)
         return self.format_message(message)
 
     def broadcast_message(self, message_data):
@@ -103,7 +104,7 @@ class ChatConsumer(WebsocketConsumer):
                 'content': message_data['content'],
                 'timestamp': message_data['timestamp'],
                 'sender_type': message_data['sender_type'],
-                'sender_name': message_data['sender_name']
+                'sender_name': message_data['sender_name'],
             }),
             ('sidebar_updates', {
                 'type': 'sidebar_update',
@@ -124,7 +125,8 @@ class ChatConsumer(WebsocketConsumer):
             'content': event['content'],
             'timestamp': event['timestamp'],
             'sender_type': event['sender_type'],
-            'sender_name': event['sender_name']
+            'sender_name': event['sender_name'],
+            'image_url': event['image_url']
         }))
 
     def sidebar_update(self, event):
@@ -154,6 +156,7 @@ class ChatConsumer(WebsocketConsumer):
             'sender_name': message.sender.name if hasattr(message.sender, 'name') else message.sender.phone_number,
             'sender_type': message.sender_type,
             'content': message.content,
+            "image_url": message.image.url if message.image else None,
             'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
         }
 

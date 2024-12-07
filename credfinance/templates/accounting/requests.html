@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-5 align-self-center">
+            <h4 class="page-title">Expense Requests</h4>
+        </div>
+        <div class="col-7 align-self-center">
+            <div class="d-flex align-items-center justify-content-end">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{% url 'home' %}">Home</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">Requests</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="button-group">
+        <button type="button" class="btn waves-effect waves-light btn-success" data-toggle="modal" data-target="#addRequest" data-whatever="@mdo">Add Request</button>
+    </div>
+    <div class="row">
+        {% include 'includes/messages.html' %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Requests</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Request Id</th>
+                                    <th>Amount</th>
+                                    <th>Purpose</th>
+                                    <th>Requested By</th>
+                                    <th>Status</th>
+                                    <th>Request Date</th>
+                                    {% if user.user_type == 'finance_manager' %}
+                                        <th>Action</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for response in page_obj %}
+                                <tr>
+                                    <td>{{ response.uuid }}</td>
+                                    <td>{{ response.amount }}</td>
+                                    <td>{{ response.purpose }}</td>
+                                    <td>{{ response.requested_by.first_name }} {{ response.requested_by.last_name }}</td>
+                                    <td>
+                                        <span class="label 
+                                            {% if response.status == 'Approved' %}label-success
+                                            {% elif response.status == 'Pending' %}label-warning
+                                            {% else %}label-danger{% endif %}">
+                                            {{ response.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ response.request_date }}</td>
+                                    {% if user.user_type == 'finance_manager' %}
+                                        <td>
+                                            {% if response.status == 'Pending' %}
+                                                <a href="{% url 'approve_request' response.uuid %}" class="btn btn-success btn-sm">Approve</a>
+                                                <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#rejectModal{{ response.uuid }}">Reject</button>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                                
+                                
+                                {% endfor %}
+
+                            </tbody>
+                        </table>
+                        
+                        <!-- Add Request Modal -->
+                        <div class="modal fade" id="addRequest" tabindex="-1" role="dialog" aria-labelledby="addRequestLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="addRequestLabel">Add New Expense Request</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form method="POST" action="{% url 'add_request' %}">
+                                            {% csrf_token %}
+                                            <div class="form-group">
+                                                <label for="amount">Amount</label>
+                                                <input type="number" class="form-control" id="amount" name="amount" placeholder="Enter amount" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="purpose">Purpose</label>
+                                                <textarea class="form-control" id="purpose" name="purpose" placeholder="Enter purpose" rows="3" required></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-success">Submit</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rejection Reason Modal -->
+                        <div class="modal fade" id="rejectModal{{ response.uuid }}" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="rejectModalLabel">Rejection Reason</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        {% if response.uuid %}
+                                        <form method="POST" action="{% url 'reject_request' response.uuid %}">
+                                            {% csrf_token %}
+                                            <div class="form-group">
+                                                <label for="rejection_reason">Reason for Rejection</label>
+                                                <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" required></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-danger">Reject</button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="pagination float-right">
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in page_obj.paginator.page_range %}
+                                    {% if page_num == page_obj.number %}
+                                        <li class="page-item active">
+                                            <a class="page-link" href="#">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

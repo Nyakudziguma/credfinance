@@ -40,19 +40,66 @@
                                 <span class="hide-menu"> View Messages </span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a href="{% url 'transactions' %}" class="sidebar-link">
+                                <i class="ti-credit-card"></i>
+                                <span class="hide-menu">Transactions </span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
-                <li class="sidebar-item">
-                    <a href="{% url 'transactions' %}" class="sidebar-link">
-                        <i class="ti-credit-card"></i>
-                        <span class="hide-menu">Transactions </span>
-                    </a>
-                </li>
+                
                 <li class="sidebar-item">
                     <a href="{% url 'faqs' %}" class="sidebar-link">
                         <i class="ti-book"></i>
                         <span class="hide-menu">FAQs </span>
                     </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="{% url 'taskboard' %}" class="sidebar-link">
+                        <i class="ti-menu-alt"></i>
+                        <span class="hide-menu"> Taskboard </span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                        <i class="mdi mdi-book-open-page-variant"></i>
+                        <span class="hide-menu"> Accounting </span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse  first-level">
+        
+                        <li class="sidebar-item">
+                            <a href="{% url 'income' %}" class="sidebar-link">
+                                <i class="ti-layout"></i>
+                                <span class="hide-menu"> Income </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="{% url 'quotations' %}" class="sidebar-link">
+                                <i class="mdi mdi-book-open-variant"></i>
+                                <span class="hide-menu"> Quotations </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="{% url 'invoices' %}" class="sidebar-link">
+                                <i class="mdi mdi-book-plus"></i>
+                                <span class="hide-menu"> Invoices </span>
+                            </a>
+                        </li>
+        
+                        <li class="sidebar-item">
+                            <a href="{% url 'expense_requests' %}" class="sidebar-link">
+                                <i class="mdi mdi-briefcase"></i>
+                                <span class="hide-menu"> Expense Requests </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="{% url 'pops' %}" class="sidebar-link">
+                                <i class="ti-credit-card"></i>
+                                <span class="hide-menu">Proof of Payments </span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
                 <li class="sidebar-item">
                     <a href="{% url 'profile' %}" class="sidebar-link">
@@ -73,3 +120,4 @@
     </div>
     <!-- End Sidebar scroll-->
 </aside>
+

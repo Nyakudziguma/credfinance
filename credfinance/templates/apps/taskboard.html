@@ -12,7 +12,7 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item">
-                            <a href="#">Home</a>
+                            <a href="{ url 'home'}">Home</a>
                         </li>
                         <li class="breadcrumb-item active" aria-current="page">Taskboard</li>
                     </ol>
@@ -28,25 +28,259 @@
 <!-- Container fluid  -->
 <!-- ============================================================== -->
 <div class="container-fluid">
+    <!-- ============================================================== -->
+    <!-- Start Page Content -->
+    <!-- ============================================================== -->
+    <div class="button-group">
+        <button type="button" class="btn waves-effect waves-light btn-success" data-toggle="modal" data-target="#exampleModal" data-whatever="@mdo">Add Task</button>
+    </div>
+    
     <div class="row">
-        <div class="col-sm-12">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title">Basic Sample Taskboard</h4>
-                    <div id="todo-lists-basic-demo"></div>
+        <div class="col-12">
+            
+            <div class="row draggable-cards" id="draggable-area">
+                {% for task in open_tasks %}
+                <div class="col-md-4 col-sm-12">
+                    <div class="card card-hover">
+                        <div class="card-header {{ task.color }}">
+                            <h4 class="m-b-0 text-white">{{ task.title }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="card-title">{{ task.description }}</h3>
+                            <p class="card-text">
+                                <strong>Start Date:</strong> {{ task.start_date }}<br>
+                                <strong>Due Date:</strong> {{ task.due_date }}
+                                
+                            </p>
+                            <p class="card-text" ><strong>Status:</strong> {{ task.status }}</p>
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+                            <a href="javascript:void(0)" 
+                                data-toggle="modal" 
+                                data-target="#editTaskModal" 
+                                data-whatever="@mdo"
+                                class="btn btn-secondary btn-edit-task" 
+                                data-task-id="{{ task.id }}"
+                                data-task-title="{{ task.title }}"
+                                data-task-description="{{ task.description }}"
+                                data-task-start-date="{{ task.start_date }}"
+                                data-task-due-date="{{ task.due_date }}">
+                                Edit
+                            </a>
+
+                            <a href="javascript:void(0)" 
+                                class="btn btn-danger btn-close-task" 
+                                data-task-id="{{ task.id }}">
+                                Close
+                            </a>
+                            
+                            
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    
+    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel1">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="exampleModalLabel1">Add Task</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-task-form">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="task-title" class="control-label">Title:</label>
+                            <input type="text" class="form-control" id="task-title" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-description" class="control-label">Description:</label>
+                            <textarea class="form-control" id="task-description" name="description" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-start-date" class="control-label">Start Date:</label>
+                            <input type="date" class="form-control" id="task-start-date" name="start_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-due-date" class="control-label">Due Date:</label>
+                            <input type="date" class="form-control" id="task-due-date" name="due_date" required>
+                        </div>
+                        
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="add-task-button">Add Task</button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="row">
-        <div class="col-sm-12">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title">Custom Control Taskboard</h4>
-                    <div id="todo-lists-demo-controls"></div>
+
+    <div class="modal fade" id="editTaskModal" tabindex="-1" role="dialog" aria-labelledby="editTaskModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="editTaskModalLabel">Edit Task</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-task-form">
+                        {% csrf_token %}
+                        <input type="hidden" id="edit-task-id" name="task_id">
+                        <div class="form-group">
+                            <label for="edit-task-title" class="control-label">Title:</label>
+                            <input type="text" class="form-control" id="edit-task-title" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-task-description" class="control-label">Description:</label>
+                            <textarea class="form-control" id="edit-task-description" name="description" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-task-start-date" class="control-label">Start Date:</label>
+                            <input type="date" class="form-control" id="edit-task-start-date" name="start_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-task-due-date" class="control-label">Due Date:</label>
+                            <input type="date" class="form-control" id="edit-task-due-date" name="due_date" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="edit-task-button">Save Changes</button>
                 </div>
             </div>
         </div>
     </div>
+    
+    
 </div>
+
+{% block scripts %}
+
+<script>
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.classList.contains('btn-close-task')) {
+        const taskId = e.target.dataset.taskId;
+
+        // Safeguard against missing CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfToken) {
+            alert('CSRF token is missing!');
+            return;
+        }
+
+        fetch(`/calender/close-task/${taskId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken.value,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    e.target.closest('.card').remove();
+                } else {
+                    alert('Failed to close task.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again later.');
+            });
+    }
+});
+
+
+document.getElementById('add-task-button').addEventListener('click', function () {
+    const form = document.getElementById('add-task-form');
+    const formData = new FormData(form);
+
+    fetch("{% url 'add_task' %}", {  
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: formData,
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Task added successfully.');
+                location.reload(); // Reload the page to show the new task
+            } else {
+                alert('Failed to add task. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again later.');
+        });
+});
+
+// Open Edit Task Modal with Pre-filled Data
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.classList.contains('btn-edit-task')) {
+        const taskId = e.target.dataset.taskId;
+        const title = e.target.dataset.taskTitle;
+        const description = e.target.dataset.taskDescription;
+        const startDate = e.target.dataset.taskStartDate;
+        const dueDate = e.target.dataset.taskDueDate;
+
+        // Populate the modal fields
+        document.getElementById('edit-task-id').value = taskId;
+        document.getElementById('edit-task-title').value = title;
+        document.getElementById('edit-task-description').value = description;
+        document.getElementById('edit-task-start-date').value = startDate;
+        document.getElementById('edit-task-due-date').value = dueDate;
+
+        // Show the modal
+        $('#editTaskModal').modal('show');
+    }
+});
+
+// Submit Edited Task
+document.getElementById('edit-task-button').addEventListener('click', function () {
+    const form = document.getElementById('edit-task-form');
+    const formData = new FormData(form);
+
+    fetch("{% url 'edit_task' %}", {  
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: formData,
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Task updated successfully.');
+                location.reload(); 
+            } else {
+                alert('Failed to update task. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again later.');
+        });
+});
+
+</script>
+<script src="{% static '/extra-libs/taskboard/js/lobilist.js' %}" ></script>
+<script src="{% static '/extra-libs/taskboard/js/lobibox.min.js' %}" ></script>
+<script src="{% static '/extra-libs/taskboard/js/task-init.js' %}" ></script>
 {% endblock %}
+
+{% endblock %}
+
