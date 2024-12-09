@@ -64,6 +64,7 @@ class MyAccountManager(BaseUserManager):
             user.save(using=self._db)
 
         user.save()
+        UserProfile.objects.create(user=user)
         return user
 
     def create_superuser(self, first_name, last_name, email, username, password):
@@ -79,6 +80,8 @@ class MyAccountManager(BaseUserManager):
         user.is_staff = True
         user.is_superadmin = True
         user.save(using=self._db)
+
+        UserProfile.objects.create(user=user)
         return user
 
 class Account(AbstractBaseUser, PermissionsMixin):

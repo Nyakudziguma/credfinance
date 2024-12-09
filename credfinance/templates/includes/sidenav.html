@@ -10,7 +10,6 @@
                         <i class="mdi mdi-av-timer"></i>
                         <span class="hide-menu">Dashboard </span>
                     </a>
-                   
                 </li>
 
                 <li class="sidebar-item">
@@ -20,14 +19,12 @@
                     </a>
                 </li>
 
-                
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
                         <i class="mdi mdi-gradient"></i>
                         <span class="hide-menu"> Bulk Messages </span>
                     </a>
                     <ul aria-expanded="false" class="collapse  first-level">
-        
                         <li class="sidebar-item">
                             <a href="{% url 'send_messages' %}" class="sidebar-link">
                                 <i class="mdi mdi-calendar-range"></i>
@@ -48,7 +45,7 @@
                         </li>
                     </ul>
                 </li>
-                
+
                 <li class="sidebar-item">
                     <a href="{% url 'faqs' %}" class="sidebar-link">
                         <i class="ti-book"></i>
@@ -60,14 +57,16 @@
                         <i class="ti-menu-alt"></i>
                         <span class="hide-menu"> Taskboard </span>
                     </a>
-                </li>
+                </li> 
+
+                <!-- Accounting Section - Restricted to non-general users -->
+                {% if request.user.user_type != 'general_user' %}
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
                         <i class="mdi mdi-book-open-page-variant"></i>
                         <span class="hide-menu"> Accounting </span>
                     </a>
                     <ul aria-expanded="false" class="collapse  first-level">
-        
                         <li class="sidebar-item">
                             <a href="{% url 'income' %}" class="sidebar-link">
                                 <i class="ti-layout"></i>
@@ -86,7 +85,6 @@
                                 <span class="hide-menu"> Invoices </span>
                             </a>
                         </li>
-        
                         <li class="sidebar-item">
                             <a href="{% url 'expense_requests' %}" class="sidebar-link">
                                 <i class="mdi mdi-briefcase"></i>
@@ -101,13 +99,15 @@
                         </li>
                     </ul>
                 </li>
+                {% endif %}
+
                 <li class="sidebar-item">
                     <a href="{% url 'profile' %}" class="sidebar-link">
                         <i class="ti-user"></i>
                         <span class="hide-menu">Profile </span>
                     </a>
                 </li>
-               
+
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark sidebar-link" href="{% url 'logout' %}" aria-expanded="false">
                         <i class="mdi mdi-directions"></i>
@@ -120,4 +120,3 @@
     </div>
     <!-- End Sidebar scroll-->
 </aside>
-

@@ -10,6 +10,9 @@ from django.http import JsonResponse
 
 @login_required
 def expense_requests(request,):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
     responses = ExpenseRequest.objects.all().order_by('-request_date')  
     paginator = Paginator(responses, 10)  
     page_number = request.GET.get('page')
@@ -19,6 +22,9 @@ def expense_requests(request,):
 
 @login_required
 def approve_request(request, uuid):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
     if request.user.user_type == 'finance_manager':
         expense_request = get_object_or_404(ExpenseRequest, uuid=uuid)
         expense_request.status = 'Approved'
@@ -56,6 +62,9 @@ def approve_request(request, uuid):
 
 @login_required
 def reject_request(request, uuid):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
     if request.user.user_type == 'finance_manager':
         expense_request = get_object_or_404(ExpenseRequest, uuid=uuid)
         if request.method == 'POST':
@@ -99,6 +108,9 @@ def reject_request(request, uuid):
 
 @login_required
 def add_request(request):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
     if request.method == 'POST':
         amount = request.POST.get('amount')
         purpose = request.POST.get('purpose')
@@ -117,6 +129,9 @@ def add_request(request):
 
 @login_required
 def income(request,):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
     responses = Income.objects.all().order_by('-date_received')  
     paginator = Paginator(responses, 10)  
     page_number = request.GET.get('page')
@@ -126,6 +141,9 @@ def income(request,):
 
 @login_required
 def add_income(request):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
     if request.method == 'POST':
         amount = request.POST.get('amount')
         source = request.POST.get('source')
@@ -149,6 +167,10 @@ def add_income(request):
 
 @login_required
 def quotations(request,):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
+    
     responses = Quotation.objects.all().order_by('-quote_date')  
     paginator = Paginator(responses, 10)  
     page_number = request.GET.get('page')
@@ -191,6 +213,10 @@ def quotations(request,):
     
 @login_required
 def invoices(request,):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
+    
     responses = Invoice.objects.all().order_by('-invoice_date')  
     paginator = Paginator(responses, 10)  
     page_number = request.GET.get('page')
@@ -232,6 +258,10 @@ def invoices(request,):
   
 @login_required
 def pops(request,):
+    if request.user.user_type == 'general_user':
+        messages.error(request, "You do not have permissions to access this page")
+        return redirect('home')
+    
     responses = ProofOfPayment.objects.all().order_by('-payment_date')  
     paginator = Paginator(responses, 10)  
     page_number = request.GET.get('page')

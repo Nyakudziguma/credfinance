@@ -12,7 +12,7 @@ from django.db.models import Max
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from balances.models import CompanyBalance
-
+from bot.models import Conversation
 class ChatConsumer(WebsocketConsumer):
     permission_classes = [AllowAny]
 
@@ -255,6 +255,7 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
             read_messages = await self.get_read_messages()
             total_users = await self.get_total_users(user)
             company_balance = await self.get_company_balance(user)
+            conversations = await self.get_conversations(user)
             
             
 
@@ -266,6 +267,7 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
                 'read_messages': read_messages,
                 'total_users': total_users,
                 'company_balance': company_balance,
+                'conversations': conversations,
             })
         else:
             print("User is not authenticated")
@@ -282,7 +284,8 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
             'unread_messages':event['unread_messages'],
             'read_messages':event['unread_messages'],
             'total_users':event['total_users'],
-            'company_balance': event['company_balance']
+            'company_balance': event['company_balance'],
+            'conversations': event['conversations']
         })
 
     async def get_chatroom_count(self):
@@ -306,4 +309,11 @@ class DashboardStatsConsumer(AsyncJsonWebsocketConsumer):
             return str(balance.balance)  
         except CompanyBalance.DoesNotExist:
             return "0"
-
+        
+    async def get_conversations(self, user):
+        try:
+            return await database_sync_to_async(
+                lambda: Conversation.objects.filter(user__company=user.company).count()
+            )()
+        except Conversation.DoesNotExist:
+            return 0

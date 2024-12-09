@@ -6,7 +6,7 @@ from asgiref.sync import async_to_sync
 from django.template.loader import render_to_string
 from chat.models import Client, ChatRoom, Message
 from balances.models import CompanyBalance
-
+from bot.models import Conversation
 from channels.layers import get_channel_layer
 
 from rest_framework.authentication import BaseAuthentication
@@ -116,6 +116,8 @@ class HandleClientMessageView(APIView):
             total_users = Client.objects.filter(company=company).count() if company else 0
             company_balance = CompanyBalance.objects.get(company=company) if company else None
             balance = str(company_balance.balance) if company_balance else "N/A"
+            conversations = Conversation.objects.filter(user__company=company).count()
+            
 
             async_to_sync(channel_layer.group_send)(
                 "dashboard_stats",
@@ -127,6 +129,7 @@ class HandleClientMessageView(APIView):
                     'read_messages': read_messages,
                     'total_users': total_users,
                     'company_balance': balance,
+                    'conversations': conversations
                 }
             )
 

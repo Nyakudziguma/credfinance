@@ -237,8 +237,9 @@
         const readMessagesCountElement = document.getElementById('read-messages-count')
         const totalUsersCountElement = document.getElementById('total-users-count')
         const companyBalanceElement = document.getElementById('company-balance')
+        const conversationsElement = document.getElementById('conversations')
         if (chatroomCountElement) {
-            chatroomCountElement.innerText = data.total_chatrooms;
+            chatroomCountElement.innerText = data.conversations;
             totalMessagesCountElement.innerText = data.total_messages;
             unreadMessagesCountElement.innerText = data.unread_messages;
             readMessagesCountElement.innerText = data.read_messages;

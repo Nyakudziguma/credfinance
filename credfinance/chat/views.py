@@ -16,7 +16,7 @@ import requests
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-
+from bot.models import Conversation
 
 def handle_client_message(phone_number, message_content):
     """
@@ -95,6 +95,7 @@ def handle_client_message(phone_number, message_content):
         total_users = Client.objects.filter(company=company).count()
         company_balance = CompanyBalance.objects.get(company=company)
         balance = str(company_balance.balance)
+        conversations = Conversation.objects.filter(user__company=company).count()
 
         async_to_sync(channel_layer.group_send)(
             "dashboard_stats",
@@ -106,6 +107,7 @@ def handle_client_message(phone_number, message_content):
                 'read_messages': read_messages,
                 'total_users': total_users,
                 'company_balance': balance,
+                'conversations': conversations,
                 
             }
         )
@@ -186,6 +188,7 @@ def send_message(request, chatroom_id):
             total_users = Client.objects.filter(company=request.user.company).count()
             company_balance = CompanyBalance.objects.get(company=request.user.company)
             balance = str(company_balance.balance)
+            conversations = Conversation.objects.filter(user__company=company).count()
 
             async_to_sync(channel_layer.group_send)(
                 "dashboard_stats",
@@ -197,6 +200,7 @@ def send_message(request, chatroom_id):
                     'read_messages': read_messages,
                     'total_users': total_users,
                     'company_balance': balance,
+                    'conversations': conversations
                 }
             )
             
